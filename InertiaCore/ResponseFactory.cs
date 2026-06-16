@@ -95,9 +95,13 @@ internal class ResponseFactory : IResponseFactory
                 ReferenceHandler = ReferenceHandler.IgnoreCycles
             });
 
-        var encoded = WebUtility.HtmlEncode(data);
+        // v3 protocol: escape forward slashes to avoid premature </script> termination
+        var escaped = data.Replace("/", "\\/");
 
-        return new HtmlString($"<div id=\"app\" data-page=\"{encoded}\"></div>");
+        return new HtmlString(
+            $"<script data-page=\"app\" type=\"application/json\">{escaped}</script>\n" +
+            $"<div id=\"app\"></div>"
+        );
     }
 
     public void Version(string? version) => _version = version;
