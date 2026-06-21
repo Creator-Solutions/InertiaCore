@@ -4,15 +4,15 @@
         <Nullable>enable</Nullable>
         <Version>0.0.10</Version>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-        <PackageId>AspNetCore.InertiaCore</PackageId>
-        <Authors>kapi2289</Authors>
+        <PackageId>InertiaCore.AspNetCore</PackageId>
+        <Authors>Creator-Solutions</Authors>
         <Description>Inertia.js ASP.NET Adapter. https://inertiajs.com/</Description>
-        <PackageProjectUrl>https://github.com/kapi2289/InertiaCore</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/kapi2289/InertiaCore</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/Creator-Solutions/InertiaCore</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Creator-Solutions/InertiaCore</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>Inertia,Inertiajs,ASPNET,Vue</PackageTags>
+        <PackageTags>Inertia,Inertiajs,ASPNET,Vue, React</PackageTags>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     </PropertyGroup>
 

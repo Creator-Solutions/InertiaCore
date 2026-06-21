@@ -1,9 +1,11 @@
 # Inertia.js ASP.NET Adapter
 
-[![NuGet](https://img.shields.io/nuget/v/AspNetCore.InertiaCore?style=flat-square&color=blue)](https://www.nuget.org/packages/AspNetCore.InertiaCore)
+[![NuGet](https://img.shields.io/nuget/v/InertiaCore.AspNetCore?style=flat-square&color=blue)](https://www.nuget.org/packages/AspNetCore.InertiaCore)
 [![Build](https://img.shields.io/github/actions/workflow/status/kapi2289/InertiaCore/dotnet.yml?style=flat-square)](https://github.com/kapi2289/InertiaCore/actions)
 [![NuGet](https://img.shields.io/nuget/dt/AspNetCore.InertiaCore?style=flat-square)](https://www.nuget.org/packages/AspNetCore.InertiaCore)
 [![License](https://img.shields.io/github/license/kapi2289/InertiaCore?style=flat-square)](https://github.com/kapi2289/InertiaCore/blob/main/LICENSE)
+
+This project is based on the original InertiaCore project by Kacper Ziubryniewicz.
 
 ## Features
 
@@ -39,8 +41,8 @@ You can check out these examples to have some starting point for your new applic
 
 ## Installation
 
-1. Using Package Manager: `PM> Install-Package AspNetCore.InertiaCore`
-2. Using .NET CLI: `dotnet add package AspNetCore.InertiaCore`
+1. Using Package Manager: `PM> Install-Package InertiaCore.AspNetCore`
+2. Using .NET CLI: `dotnet add package InertiaCore.AspNetCore`
 
 ## Getting started
 
@@ -69,16 +71,32 @@ Create a file `/Views/App.cshtml`.
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title inertia>My App</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title inertia>My App</title>
+
+  @await Inertia.Head(Model)
+
+  <script type="module">
+    import RefreshRuntime from 'http://localhost:5173/@@react-refresh';
+
+    RefreshRuntime.injectIntoGlobalHook(window);
+
+    window.$RefreshReg$ = () => {};
+    window.$RefreshSig$ = () => (type) => type;
+    window.__vite_plugin_react_preamble_installed__ = true;
+  </script>
 </head>
+
 <body>
 @await Inertia.Html(Model)
 
-<script src="/js/app.js"></script>
+<script type="module" src="http://localhost:5173/@@vite/client"></script>
+<script type="module" src="http://localhost:5173/src/main.tsx"></script>
 </body>
 </html>
+
 ```
 
 You can change the root view file using:
@@ -86,7 +104,8 @@ You can change the root view file using:
 ```csharp
 builder.Services.AddInertia(options =>
 {
-    options.RootView = "~/Views/Main.cshtml";
+    options.RootView = "~/Views/App.cshtml";
+    options.SsrEnabled = false;
 });
 ```
 

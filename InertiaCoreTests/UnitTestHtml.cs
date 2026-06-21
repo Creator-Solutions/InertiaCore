@@ -9,6 +9,6 @@ public partial class Tests
         var html = await _factory.Html(new { Test = "Test" });
 
         Assert.That(html.ToString(),
-            Is.EqualTo("<div id=\"app\" data-page=\"{&quot;test&quot;:&quot;Test&quot;}\"></div>"));
+            Is.EqualTo("<script data-page=\"app\" type=\"application/json\">{\"test\":\"Test\"}</script>\n<div id=\"app\"></div>"));
     }
 }
