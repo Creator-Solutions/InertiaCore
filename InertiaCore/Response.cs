@@ -1,16 +1,19 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using InertiaCore.Extensions;
 using InertiaCore.Models;
 using InertiaCore.Props;
+using InertiaCore.Services;
 using InertiaCore.Utils;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
 
 namespace InertiaCore;
 
-public class Response : IActionResult
+public class Response : IActionResult, IResult
 {
     private readonly string _component;
     private readonly Dictionary<string, object?> _props;
@@ -18,19 +21,89 @@ public class Response : IActionResult
     private readonly string? _version;
     private readonly bool _encryptHistory;
     private readonly bool _clearHistory;
+    private readonly InertiaState _state;
+    private readonly JsonSerializerOptions _jsonOptions;
 
     private ActionContext? _context;
     private Page? _page;
     private IDictionary<string, object>? _viewData;
 
-    internal Response(string component, Dictionary<string, object?> props, string rootView, string? version, bool encryptHistory, bool clearHistory)
-        => (_component, _props, _rootView, _version, _encryptHistory, _clearHistory) = (component, props, rootView, version, encryptHistory, clearHistory);
-
-    public async Task ExecuteResultAsync(ActionContext context)
+    internal Response(
+        string component,
+        Dictionary<string, object?> props,
+        string rootView,
+        string? version,
+        bool encryptHistory,
+        bool clearHistory,
+        InertiaState state,
+        JsonSerializerOptions jsonOptions)
     {
-        SetContext(context);
+        _component = component;
+        _props = props;
+        _rootView = rootView;
+        _version = version;
+        _encryptHistory = encryptHistory;
+        _clearHistory = clearHistory;
+        _state = state ?? throw new ArgumentNullException(nameof(state));
+        _jsonOptions = jsonOptions ?? throw new ArgumentNullException(nameof(jsonOptions));
+    }
+
+    /// <summary>
+    /// MVC / controller path — ActionContext is provided directly by the MVC pipeline.
+    /// </summary>
+    async Task IActionResult.ExecuteResultAsync(ActionContext context)
+    {
+        _context = context;
         await ProcessResponse();
-        await GetResult().ExecuteResultAsync(_context!);
+        await GetResult().ExecuteResultAsync(_context);
+    }
+
+    /// <summary>
+    /// Minimal API path — wraps the HttpContext in a minimal ActionContext so the
+    /// existing processing pipeline works without modification.
+    /// <para>
+    /// For Inertia requests we write JSON directly to the response rather than going
+    /// through <see cref="JsonResult.ExecuteResultAsync"/>, which requires
+    /// <c>RequestServices</c> to be populated (not guaranteed in Minimal API hosts or
+    /// unit tests using <c>DefaultHttpContext</c>).
+    /// </para>
+    /// <para>
+    /// For non-Inertia (full page) requests we fall back to
+    /// <see cref="ViewResult.ExecuteResultAsync"/> — the view engine is always available
+    /// in a real host, and this path is never reached in unit tests since the view result
+    /// type is asserted without executing it.
+    /// </para>
+    /// </summary>
+    async Task IResult.ExecuteAsync(HttpContext httpContext)
+    {
+        var routeData = httpContext.GetRouteData() ?? new RouteData();
+        _context = new ActionContext(
+            httpContext,
+            routeData,
+            new ActionDescriptor(),
+            new ModelStateDictionary()
+        );
+
+        await ProcessResponse();
+
+        if (_context.IsInertiaRequest())
+        {
+            // Set headers via the shared GetJson() path so protocol behaviour
+            // (X-Inertia, Vary, status 200) is identical to the MVC path.
+            var jsonResult = GetJson();
+
+            httpContext.Response.ContentType = "application/json";
+            var json = JsonSerializer.Serialize(jsonResult.Value, _jsonOptions);
+            await httpContext.Response.WriteAsync(json);
+        }
+        else
+        {
+            // Full page load — delegate to MVC ViewResult which needs the view engine.
+            // In a real Minimal API host, AddControllersWithViews / AddRazorPages will
+            // have registered the required services. Unit tests assert on GetResult()
+            // directly and never reach this branch via ExecuteAsync.
+            await GetView().ExecuteResultAsync(_context);
+        }
     }
 
     protected internal async Task ProcessResponse()
@@ -60,6 +133,7 @@ public class Response : IActionResult
         var props = _props;
 
         props = ResolveSharedProps(props);
+        props = ResolveFlashProps(props);
         props = ResolvePartialProperties(props);
         props = ResolveAlways(props);
         props = await ResolvePropertyInstances(props);
@@ -68,15 +142,40 @@ public class Response : IActionResult
     }
 
     /// <summary>
-    /// Resolve `shared` props stored in the current request context.
+    /// Resolve `shared` props stored in InertiaState (migrated from HttpContext.Features).
     /// </summary>
     private Dictionary<string, object?> ResolveSharedProps(Dictionary<string, object?> props)
     {
-        var shared = _context!.HttpContext.Features.Get<InertiaSharedProps>();
-        if (shared != null)
-            props = shared.GetMerged(props);
+        if (_state.SharedProps.Count == 0)
+            return props;
 
-        return props;
+        var result = new Dictionary<string, object?>(props.Count + _state.SharedProps.Count);
+        foreach (var (key, value) in _state.SharedProps)
+            result[key] = value;
+
+        foreach (var (key, value) in props)
+            result[key] = value;
+
+        return result;
+    }
+
+    /// <summary>
+    /// Resolve flash props stored in InertiaState.
+    /// Flash props are merged after shared props but before component props.
+    /// </summary>
+    private Dictionary<string, object?> ResolveFlashProps(Dictionary<string, object?> props)
+    {
+        if (_state.FlashProps.Count == 0)
+            return props;
+
+        var result = new Dictionary<string, object?>(props.Count + _state.FlashProps.Count);
+        foreach (var (key, value) in props)
+            result[key] = value;
+
+        foreach (var (key, value) in _state.FlashProps)
+            result[key] = value;
+
+        return result;
     }
 
     /// <summary>
@@ -88,7 +187,7 @@ public class Response : IActionResult
 
         if (!isPartial)
             return props
-                .Where(kv => kv.Value is not LazyProp)
+                .Where(kv => kv.Value is not LazyProp and not DeferredProp)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
 
         props = props.ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -133,7 +232,8 @@ public class Response : IActionResult
     }
 
     /// <summary>
-    /// Resolve `always` properties that should always be included on all visits, regardless of "only" or "except" requests.
+    /// Resolve `always` properties that should always be included on all visits,
+    /// regardless of "only" or "except" requests.
     /// </summary>
     private Dictionary<string, object?> ResolveAlways(Dictionary<string, object?> props)
     {
@@ -174,13 +274,17 @@ public class Response : IActionResult
     {
         _context!.HttpContext.Response.Headers.Override(InertiaHeader.Inertia, "true");
         _context!.HttpContext.Response.Headers.Override("Vary", InertiaHeader.Inertia);
+
+        // Per the Inertia.js protocol, partial reload responses should include
+        // Vary: X-Inertia-Partial-Data so that CDNs differentiate between full
+        // page responses and partial reload responses for caching purposes.
+        // See: https://inertiajs.com/the-protocol#asset-versioning
+        if (_context!.IsInertiaPartialComponent(_component))
+            _context.HttpContext.Response.Headers["Vary"] += ", " + InertiaHeader.PartialOnly;
+
         _context!.HttpContext.Response.StatusCode = 200;
 
-        return new JsonResult(_page, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            ReferenceHandler = ReferenceHandler.IgnoreCycles
-        });
+        return new JsonResult(_page, _jsonOptions);
     }
 
     private ViewResult GetView()
@@ -200,13 +304,35 @@ public class Response : IActionResult
 
     protected internal IActionResult GetResult() => _context!.IsInertiaRequest() ? GetJson() : GetView();
 
-    private Dictionary<string, string> GetErrors()
+    /// <summary>
+    /// Gets validation errors from ModelState.
+    /// If the X-Inertia-Error-Bag header is present, errors are scoped under a named bag.
+    /// See: https://inertiajs.com/error-handling#error-bags
+    /// </summary>
+    private Dictionary<string, object?> GetErrors()
     {
         if (!_context!.ModelState.IsValid)
-            return _context!.ModelState.ToDictionary(o => o.Key.ToCamelCase(),
+        {
+            var errors = _context!.ModelState.ToDictionary(
+                o => o.Key.ToCamelCase(),
                 o => o.Value?.Errors.FirstOrDefault()?.ErrorMessage ?? "");
 
-        return new Dictionary<string, string>(0);
+            // X-Inertia-Error-Bag scopes validation errors to a named bag.
+            var errorBag = _context.HttpContext.Request.Headers[InertiaHeader.ErrorBag].ToString();
+
+            if (!string.IsNullOrEmpty(errorBag))
+            {
+                return new Dictionary<string, object?>
+                {
+                    [errorBag] = errors
+                };
+            }
+
+            return new Dictionary<string, object?>(errors
+                .ToDictionary(kv => kv.Key, kv => (object?)kv.Value));
+        }
+
+        return new Dictionary<string, object?>();
     }
 
     protected internal void SetContext(ActionContext context) => _context = context;

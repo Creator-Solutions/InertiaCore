@@ -33,7 +33,7 @@ public partial class Tests
 
     [Test]
     [Description("Test if the Vite Helper handles hot module reloading properly.")]
-    public void TestHot()
+    public async Task TestHot()
     {
         var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
         {
@@ -45,7 +45,7 @@ public partial class Tests
         var mock = new Mock<ViteBuilder>(options.Object);
         mock.Object.UseFileSystem(fileSystem);
 
-        var htmlResult = mock.Object.ReactRefresh();
+        var htmlResult = await mock.Object.ReactRefreshAsync();
 
         const string inner =
             "<script type=\"module\">import RefreshRuntime from 'http://127.0.0.1:5174/@react-refresh';" +
@@ -59,7 +59,7 @@ public partial class Tests
 
     [Test]
     [Description("Test if the Vite Helper handles HMR disabled properly.")]
-    public void TestNotHot()
+    public async Task TestNotHot()
     {
         var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>());
         var options = new Mock<IOptions<ViteOptions>>();
@@ -68,13 +68,13 @@ public partial class Tests
         var mock = new Mock<ViteBuilder>(options.Object);
         mock.Object.UseFileSystem(fileSystem);
 
-        Assert.That(mock.Object.ReactRefresh().ToString(), Is.EqualTo("<!-- no hot -->"));
+        Assert.That((await mock.Object.ReactRefreshAsync()).ToString(), Is.EqualTo("<!-- no hot -->"));
     }
 
     [Test]
     [Description(
         "Test if the Vite Helper handles generating HTML tags for both JS and CSS from HMR and the manifest properly.")]
-    public void TestViteInput()
+    public async Task TestViteInput()
     {
         var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>());
         var options = new Mock<IOptions<ViteOptions>>();
@@ -84,31 +84,33 @@ public partial class Tests
         mock.Object.UseFileSystem(fileSystem);
 
         // Missing manifest exception
-        Assert.Throws<Exception>(() => mock.Object.Input("app.tsx"));
+        Assert.ThrowsAsync<Exception>(() => mock.Object.InputAsync("app.tsx"));
 
         fileSystem.AddFile(@"/wwwroot/build/manifest.json", new MockFileData("null"));
 
         // Null manifest exception
-        Assert.Throws<Exception>(() => mock.Object.Input("app.tsx"));
+        Assert.ThrowsAsync<Exception>(() => mock.Object.InputAsync("app.tsx"));
 
         // Missing info exception
         fileSystem.AddFile(@"/wwwroot/build/manifest.json", new MockFileData("{\"main.tsx\": {}}"));
 
-        Assert.Throws<Exception>(() => mock.Object.Input("app.tsx"));
+        Assert.ThrowsAsync<Exception>(() => mock.Object.InputAsync("app.tsx"));
 
         // Basic JS File
         fileSystem.AddFile(@"/wwwroot/build/manifest.json",
             new MockFileData("{\"app.tsx\": {\"file\": \"assets/main-19038c6a.js\"}}"));
+        mock.Object.ClearManifestCache();
 
-        var result = mock.Object.Input("app.tsx");
+        var result = await mock.Object.InputAsync("app.tsx");
         Assert.That(result.ToString(),
             Is.EqualTo("<script src=\"/build/assets/main-19038c6a.js\" type=\"module\"></script>\n\t"));
 
         // Basic JS File with CSS import
         fileSystem.AddFile(@"/wwwroot/build/manifest.json",
             new MockFileData("{\"app.tsx\": {\"file\": \"assets/main.js\",\"css\": [\"assets/index.css\"]}}"));
+        mock.Object.ClearManifestCache();
 
-        result = mock.Object.Input("app.tsx");
+        result = await mock.Object.InputAsync("app.tsx");
         Assert.That(result.ToString(),
             Is.EqualTo(
                 "<script src=\"/build/assets/main.js\" type=\"module\"></script>\n\t<link href=\"/build/assets/index.css\" rel=\"stylesheet\" />\n\t"));
@@ -116,18 +118,20 @@ public partial class Tests
         // Basic CSS file
         fileSystem.AddFile(@"/wwwroot/build/manifest.json",
             new MockFileData("{\"index.scss\": {\"file\": \"assets/index.css\"}}"));
+        mock.Object.ClearManifestCache();
 
-        result = mock.Object.Input("index.scss");
+        result = await mock.Object.InputAsync("index.scss");
         Assert.That(result.ToString(), Is.EqualTo("<link href=\"/build/assets/index.css\" rel=\"stylesheet\" />\n\t"));
 
         // Basic CSS file with custom builder dir
         fileSystem.AddFile(@"/wwwroot/manifest.json",
             new MockFileData("{\"index.scss\": {\"file\": \"assets/index.css\"}}"));
+        mock.Object.ClearManifestCache();
         options.SetupGet(x => x.Value).Returns(new ViteOptions
         {
             BuildDirectory = null
         });
-        result = mock.Object.Input("index.scss");
+        result = await mock.Object.InputAsync("index.scss");
         Assert.That(result.ToString(), Is.EqualTo("<link href=\"/assets/index.css\" rel=\"stylesheet\" />\n\t"));
 
         // Hot file with css import
@@ -137,7 +141,7 @@ public partial class Tests
         });
         fileSystem.AddFile(@"/wwwroot/hot", new MockFileData("http://127.0.0.1:5174"));
 
-        result = mock.Object.Input("index.scss");
+        result = await mock.Object.InputAsync("index.scss");
         Assert.That(result.ToString(), Is.EqualTo(
             "<script src=\"http://127.0.0.1:5174/@vite/client\" type=\"module\"></script>\n\t" +
             "<script src=\"http://127.0.0.1:5174/index.scss\" type=\"module\"></script>\n\t"));
@@ -148,7 +152,7 @@ public partial class Tests
         {
             BuildDirectory = null
         });
-        result = mock.Object.Input("index.scss");
+        result = await mock.Object.InputAsync("index.scss");
         Assert.That(result.ToString(), Is.EqualTo(
             "<script src=\"http://127.0.0.1:5174/@vite/client\" type=\"module\"></script>\n\t" +
             "<script src=\"http://127.0.0.1:5174/index.scss\" type=\"module\"></script>\n\t"));
@@ -158,13 +162,13 @@ public partial class Tests
         {
             BuildDirectory = ""
         });
-        result = mock.Object.Input("index.scss");
+        result = await mock.Object.InputAsync("index.scss");
         Assert.That(result.ToString(), Is.EqualTo(
             "<script src=\"http://127.0.0.1:5174/@vite/client\" type=\"module\"></script>\n\t" +
             "<script src=\"http://127.0.0.1:5174/index.scss\" type=\"module\"></script>\n\t"));
 
         // Basic JS File via hot
-        result = mock.Object.Input("app.tsx");
+        result = await mock.Object.InputAsync("app.tsx");
         Assert.That(result.ToString(), Is.EqualTo(
             "<script src=\"http://127.0.0.1:5174/@vite/client\" type=\"module\"></script>\n\t" +
             "<script src=\"http://127.0.0.1:5174/app.tsx\" type=\"module\"></script>\n\t"));

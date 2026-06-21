@@ -2,6 +2,13 @@ using InertiaCore.Extensions;
 
 namespace InertiaCore.Utils;
 
+/// <summary>
+/// Stores shared Inertia props per-request.
+/// <para>
+/// This class is deprecated. Use <c>InertiaCore.Services.InertiaState</c> instead.
+/// </para>
+/// </summary>
+[Obsolete("Use InertiaCore.Services.InertiaState instead.")]
 internal class InertiaSharedProps
 {
     private IDictionary<string, object?>? Data { get; set; }

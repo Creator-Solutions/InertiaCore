@@ -1,7 +1,8 @@
 using InertiaCore;
+using InertiaCore.Extensions;
 using InertiaCore.Models;
+using InertiaCore.Services;
 using InertiaCore.Ssr;
-using InertiaCore.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
@@ -26,16 +27,25 @@ public partial class Tests
         var options = new Mock<IOptions<InertiaOptions>>();
         options.SetupGet(x => x.Value).Returns(new InertiaOptions());
 
-        _factory = new ResponseFactory(contextAccessor.Object, gateway, options.Object);
+        var state = new InertiaState();
+
+        var jsonOptions = new Mock<IOptions<JsonOptions>>();
+        jsonOptions.SetupGet(x => x.Value).Returns(new JsonOptions());
+
+        _factory = new ResponseFactory(
+            contextAccessor.Object,
+            gateway,
+            options.Object,
+            state,
+            jsonOptions.Object);
     }
 
     /// <summary>
     ///     Prepares ActionContext for usage in tests.
     /// </summary>
     /// <param name="headers">Optional request headers.</param>
-    /// <param name="sharedProps">Optional Inertia shared data.</param>
     /// <param name="modelState">Optional validation errors dictionary.</param>
-    private static ActionContext PrepareContext(HeaderDictionary? headers = null, InertiaSharedProps? sharedProps = null,
+    private static ActionContext PrepareContext(HeaderDictionary? headers = null,
         Dictionary<string, string>? modelState = null)
     {
         var request = new Mock<HttpRequest>();
@@ -43,10 +53,11 @@ public partial class Tests
 
         var response = new Mock<HttpResponse>();
         response.SetupGet(r => r.Headers).Returns(new HeaderDictionary());
+        var statusCode = 200;
+        response.SetupGet(r => r.StatusCode).Returns(() => statusCode);
+        response.SetupSet(r => r.StatusCode = It.IsAny<int>()).Callback<int>(v => statusCode = v);
 
         var features = new FeatureCollection();
-        if (sharedProps != null)
-            features.Set(sharedProps);
 
         var httpContext = new Mock<HttpContext>();
         httpContext.SetupGet(c => c.Request).Returns(request.Object);
