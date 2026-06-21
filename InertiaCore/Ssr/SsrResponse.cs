@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Html;
 
 namespace InertiaCore.Ssr;
 
-internal class SsrResponse
+public class SsrResponse
 {
     public List<string> Head { get; set; } = default!;
     public string Body { get; set; } = default!;

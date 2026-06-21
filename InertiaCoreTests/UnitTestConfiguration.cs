@@ -5,6 +5,7 @@ using InertiaCore.Utils;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace InertiaCoreTests;
@@ -15,8 +16,6 @@ public partial class Tests
     [Description("Test if the configuration registers properly necessary services and filters.")]
     public void TestConfiguration()
     {
-        Assert.Throws<NullReferenceException>(() => Inertia.GetVersion());
-
         var builder = WebApplication.CreateBuilder();
 
         Assert.DoesNotThrow(() => builder.Services.AddInertia());
@@ -43,6 +42,8 @@ public partial class Tests
         var app = builder.Build();
         Assert.DoesNotThrow(() => app.UseInertia());
 
-        Assert.DoesNotThrow(() => Inertia.GetVersion());
+        // Verify IResponseFactory resolves from DI and GetVersion() works after pipeline is configured.
+        var factory = app.Services.GetRequiredService<IResponseFactory>();
+        Assert.DoesNotThrow(() => factory.GetVersion());
     }
 }

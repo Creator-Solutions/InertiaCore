@@ -1,24 +1,31 @@
 using System.Net;
 using InertiaCore.Extensions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InertiaCore.Utils;
 
-public class LocationResult : IActionResult
+public class LocationResult : IActionResult, IResult
 {
     private readonly string _url;
-
     public LocationResult(string url) => _url = url;
 
-    public async Task ExecuteResultAsync(ActionContext context)
+    public Task ExecuteResultAsync(ActionContext context)
     {
-        if (context.IsInertiaRequest())
-        {
-            context.HttpContext.Response.Headers.Override(InertiaHeader.Location, _url);
-            await new StatusCodeResult((int)HttpStatusCode.Conflict).ExecuteResultAsync(context);
-            return;
-        }
+        var response = context.HttpContext.Response;
+        SetHeaders(response);
+        return Task.CompletedTask;
+    }
 
-        await new RedirectResult(_url).ExecuteResultAsync(context);
+    public Task ExecuteAsync(HttpContext httpContext)
+    {
+        SetHeaders(httpContext.Response);
+        return Task.CompletedTask;
+    }
+
+    private void SetHeaders(HttpResponse response)
+    {
+        response.Headers["X-Inertia-Location"] = _url;
+        response.StatusCode = 409;
     }
 }

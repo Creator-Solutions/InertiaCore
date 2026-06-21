@@ -21,6 +21,10 @@ internal class ViteBuilder : IViteBuilder
 {
     private IFileSystem _fileSystem;
     private readonly IOptions<ViteOptions> _options;
+    private readonly object _cacheLock = new();
+    private string? _cachedManifest;
+    private DateTime _lastManifestRead = DateTime.MinValue;
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
     public ViteBuilder(IOptions<ViteOptions> options) => (_fileSystem, _options) = (new FileSystem(), options);
 
@@ -29,9 +33,6 @@ internal class ViteBuilder : IViteBuilder
         _fileSystem = fileSystem;
     }
 
-    /// <summary>
-    /// Get the public directory
-    /// </summary>
     private string GetPublicPathForFile(string path)
     {
         var pieces = new List<string> {
@@ -42,9 +43,6 @@ internal class ViteBuilder : IViteBuilder
         return string.Join("/", pieces);
     }
 
-    /// <summary>
-    /// Get the public directory and build path.
-    /// </summary>
     private string GetBuildPathForFile(string path)
     {
         var pieces = new List<string> { _options.Value.PublicDirectory };
@@ -60,6 +58,7 @@ internal class ViteBuilder : IViteBuilder
     /// <summary>
     /// Generates various tags from a given input file path.
     /// </summary>
+    [Obsolete("Use InputAsync instead. This method uses synchronous file I/O.")]
     public HtmlString Input(string path)
     {
         if (IsRunningHot())
@@ -73,6 +72,83 @@ internal class ViteBuilder : IViteBuilder
         }
 
         var manifest = _fileSystem.File.ReadAllText(GetBuildPathForFile(_options.Value.ManifestFilename));
+        return ProcessManifest(path, manifest);
+    }
+
+    /// <summary>
+    /// Asynchronously generates various tags from a given input file path.
+    /// Uses file I/O abstraction and caching for production builds.
+    /// </summary>
+    public async Task<HtmlString> InputAsync(string path, CancellationToken cancellationToken = default)
+    {
+        if (IsRunningHot())
+        {
+            return new HtmlString(MakeModuleTag("@vite/client").Value + MakeModuleTag(path).Value);
+        }
+
+        var manifestPath = GetBuildPathForFile(_options.Value.ManifestFilename);
+
+        // Check cache before reading
+        if (!_fileSystem.File.Exists(manifestPath))
+        {
+            throw new Exception("Vite Manifest is missing. Run `npm run build` and try again.");
+        }
+
+        var manifest = await ReadManifestWithCacheAsync(manifestPath, cancellationToken);
+        return ProcessManifest(path, manifest);
+    }
+
+    /// <summary>
+    /// Generate React refresh runtime script.
+    /// </summary>
+    [Obsolete("Use ReactRefreshAsync instead. This method uses synchronous file I/O.")]
+    public HtmlString ReactRefresh()
+    {
+        if (!IsRunningHot())
+        {
+            return new HtmlString("<!-- no hot -->");
+        }
+
+        var builder = new TagBuilder("script");
+        builder.Attributes.Add("type", "module");
+
+        var inner = $"import RefreshRuntime from '{Asset("@react-refresh")}';" +
+                    "RefreshRuntime.injectIntoGlobalHook(window);" +
+                    "window.$RefreshReg$ = () => { };" +
+                    "window.$RefreshSig$ = () => (type) => type;" +
+                    "window.__vite_plugin_react_preamble_installed__ = true;";
+
+        builder.InnerHtml.AppendHtml(inner);
+
+        return new HtmlString(GetString(builder));
+    }
+
+    /// <summary>
+    /// Asynchronously generate React refresh runtime script.
+    /// </summary>
+    public Task<HtmlString> ReactRefreshAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsRunningHot())
+        {
+            return Task.FromResult(new HtmlString("<!-- no hot -->"));
+        }
+
+        var builder = new TagBuilder("script");
+        builder.Attributes.Add("type", "module");
+
+        var inner = $"import RefreshRuntime from '{Asset("@react-refresh")}';" +
+                    "RefreshRuntime.injectIntoGlobalHook(window);" +
+                    "window.$RefreshReg$ = () => { };" +
+                    "window.$RefreshSig$ = () => (type) => type;" +
+                    "window.__vite_plugin_react_preamble_installed__ = true;";
+
+        builder.InnerHtml.AppendHtml(inner);
+
+        return Task.FromResult(new HtmlString(GetString(builder)));
+    }
+
+    private HtmlString ProcessManifest(string path, string manifest)
+    {
         var manifestJson = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(manifest);
 
         if (manifestJson == null)
@@ -108,9 +184,30 @@ internal class ViteBuilder : IViteBuilder
         return html;
     }
 
-    /// <summary>
-    /// Generate script tag with type="module"
-    /// </summary>
+    private async Task<string> ReadManifestWithCacheAsync(string manifestPath, CancellationToken cancellationToken)
+    {
+        // Simple time-based cache to avoid reading the manifest file on every request.
+        var now = DateTime.UtcNow;
+        lock (_cacheLock)
+        {
+            if (_cachedManifest != null && now - _lastManifestRead < CacheDuration)
+            {
+                return _cachedManifest;
+            }
+        }
+
+        // Read with async file I/O via the IFileSystem abstraction.
+        var manifest = await Task.Run(() => _fileSystem.File.ReadAllText(manifestPath), cancellationToken);
+
+        lock (_cacheLock)
+        {
+            _cachedManifest = manifest;
+            _lastManifestRead = now;
+        }
+
+        return manifest;
+    }
+
     private HtmlString MakeModuleTag(string path)
     {
         var builder = new TagBuilder("script");
@@ -120,17 +217,11 @@ internal class ViteBuilder : IViteBuilder
         return new HtmlString(GetString(builder) + "\n\t");
     }
 
-    /// <summary>
-    /// Generate an appropriate tag for the given URL in HMR mode.
-    /// </summary>
     private HtmlString MakeTag(string url)
     {
         return IsCssPath(url) ? MakeStylesheetTag(url) : MakeModuleTag(url);
     }
 
-    /// <summary>
-    /// Generate a stylesheet tag for the given URL in HMR mode.
-    /// </summary>
     private HtmlString MakeStylesheetTag(string filePath)
     {
         var builder = new TagBuilder("link");
@@ -139,41 +230,11 @@ internal class ViteBuilder : IViteBuilder
         return new HtmlString(GetString(builder).Replace("></link>", " />") + "\n\t");
     }
 
-    /// <summary>
-    /// Determine whether the given path is a CSS file.
-    /// </summary>
     private static bool IsCssPath(string path)
     {
         return Regex.IsMatch(path, @".\.(css|less|sass|scss|styl|stylus|pcss|postcss)", RegexOptions.IgnoreCase);
     }
 
-    /// <summary>
-    /// Generate React refresh runtime script.
-    /// </summary>
-    public HtmlString ReactRefresh()
-    {
-        if (!IsRunningHot())
-        {
-            return new HtmlString("<!-- no hot -->");
-        }
-
-        var builder = new TagBuilder("script");
-        builder.Attributes.Add("type", "module");
-
-        var inner = $"import RefreshRuntime from '{Asset("@react-refresh")}';" +
-                    "RefreshRuntime.injectIntoGlobalHook(window);" +
-                    "window.$RefreshReg$ = () => { };" +
-                    "window.$RefreshSig$ = () => (type) => type;" +
-                    "window.__vite_plugin_react_preamble_installed__ = true;";
-
-        builder.InnerHtml.AppendHtml(inner);
-
-        return new HtmlString(GetString(builder));
-    }
-
-    /// <summary>
-    /// Get the URL to a given asset when running in HMR mode.
-    /// </summary>
     private string HotAsset(string path)
     {
         var hotFilePath = GetPublicPathForFile(_options.Value.HotFile);
@@ -182,9 +243,6 @@ internal class ViteBuilder : IViteBuilder
         return hotContents + "/" + path;
     }
 
-    /// <summary>
-    /// Get the URL for an asset.
-    /// </summary>
     private string Asset(string path)
     {
         if (IsRunningHot())
@@ -202,22 +260,25 @@ internal class ViteBuilder : IViteBuilder
         return "/" + string.Join("/", pieces);
     }
 
-    /// <summary>
-    /// Determine if Vite is running in HMR mode.
-    /// </summary>
     private bool IsRunningHot()
     {
         return _fileSystem.File.Exists(GetPublicPathForFile(_options.Value.HotFile));
     }
 
-    /// <summary>
-    /// Convert an IHtmlContent to a string.
-    /// </summary>
     private static string GetString(IHtmlContent content)
     {
         var writer = new StringWriter();
         content.WriteTo(writer, HtmlEncoder.Default);
         return writer.ToString();
+    }
+
+    internal void ClearManifestCache()
+    {
+        lock (_cacheLock)
+        {
+            _cachedManifest = null;
+            _lastManifestRead = DateTime.MinValue;
+        }
     }
 
     public string? GetManifest()

@@ -1,5 +1,4 @@
 using InertiaCore.Models;
-using InertiaCore.Utils;
 
 namespace InertiaCoreTests;
 
@@ -14,10 +13,9 @@ public partial class Tests
             Test = "Test"
         });
 
-        var sharedProps = new InertiaSharedProps();
-        sharedProps.Set("TestShared", "Shared");
+        _factory.Share("TestShared", "Shared");
 
-        var context = PrepareContext(null, sharedProps);
+        var context = PrepareContext();
 
         response.SetContext(context);
         await response.ProcessResponse();
@@ -28,7 +26,7 @@ public partial class Tests
         {
             { "test", "Test" },
             { "testShared", "Shared" },
-            { "errors", new Dictionary<string, string>(0) }
+            { "errors", new Dictionary<string, object?>() }
         }));
     }
 }

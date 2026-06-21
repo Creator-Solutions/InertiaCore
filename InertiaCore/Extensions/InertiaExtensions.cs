@@ -32,23 +32,21 @@ internal static class InertiaExtensions
         return true;
     }
 
-    internal static Task<object?> ResolveAsync(this Func<object?> func)
+    internal static async Task<object?> ResolveAsync(this Func<object?> func)
     {
-        var rt = func.Method.ReturnType;
+        var result = func();
 
-        if (!rt.IsGenericType || rt.GetGenericTypeDefinition() != typeof(Task<>))
-            return Task.Run(func.Invoke);
+        if (result is Task task)
+        {
+            return await task.UnwrapResultAsync();
+        }
 
-        var task = func.DynamicInvoke() as Task;
-        return task!.ResolveResult();
+        return result;
     }
 
-    internal static async Task<object?> ResolveResult(this Task task)
+    internal static Task<object?> ResolveResult(this Task task)
     {
-        await task.ConfigureAwait(false);
-        var result = task.GetType().GetProperty("Result");
-
-        return result?.GetValue(task);
+        return task.UnwrapResultAsync();
     }
 
     internal static string MD5(this string s)
