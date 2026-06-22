@@ -122,4 +122,62 @@ public class UnitInertiaMiddlewareVersion
 
         Assert.That(content, Is.EqualTo("page-data-version"));
     }
+
+    [Test]
+    public async Task Middleware_Sets_XInertiaHeader_And_VersionHeader_ForInertiaRequest()
+    {
+        // Arrange
+        using var host = await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder
+                    .UseTestServer()
+                    .ConfigureServices(services => services.AddInertiaVersion("abc123"))
+                    .Configure(app =>
+                    {
+                        app.UseMiddleware<InertiaMiddleware>();
+                        app.Run(ctx => ctx.Response.WriteAsync("OK"));
+                    });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/");
+        request.Headers.Add("X-Inertia", "true"); // simulate Inertia request
+
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        Assert.IsTrue(response.Headers.Contains("X-Inertia"));
+        Assert.That(response.Headers.GetValues("X-Inertia").First(), Is.EqualTo("true"));
+        Assert.IsTrue(response.Headers.Contains("X-Inertia-Version"));
+        Assert.That(response.Headers.GetValues("X-Inertia-Version").First(), Is.EqualTo("abc123"));
+    }
+
+    [Test]
+    public async Task Middleware_DoesNotAddInertiaHeaders_ForNonInertiaRequest()
+    {
+        using var host = await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder
+                    .UseTestServer()
+                    .ConfigureServices(services => { services.AddInertiaVersion("some-version"); })
+                    .Configure(app =>
+                    {
+                        app.UseMiddleware<InertiaMiddleware>();
+                        app.Run(ctx => ctx.Response.WriteAsync("OK"));
+                    });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/");
+
+        var response = await client.SendAsync(request);
+
+        Assert.That(response.Headers.Contains("X-Inertia"), Is.False);
+        Assert.That(response.Headers.Contains("X-Inertia-Version"), Is.False);
+    }
 }
