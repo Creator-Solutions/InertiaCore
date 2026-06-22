@@ -1,4 +1,5 @@
 using InertiaCore.Contracts;
+using InertiaCore.Extensions;
 using Microsoft.AspNetCore.Http;
 
 namespace InertiaCore.Middleware;
@@ -22,8 +23,10 @@ public class InertiaMiddleware
         
         context.Response.OnStarting(() =>
         {
-            if (context.Items.ContainsKey("InertiaResponse"))
+            // Only add Inertia headers if this is an Inertia request OR the response is explicitly marked as Inertia
+            if (context.IsInertiaRequest() || context.Items.ContainsKey("InertiaResponse"))
             {
+                context.Response.Headers["X-Inertia"] = "true";
                 context.Response.Headers["X-Inertia-Version"] = currentVersion;
             }
             return Task.CompletedTask;
