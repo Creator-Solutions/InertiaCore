@@ -1,6 +1,7 @@
 using System.Net;
 using InertiaCore.Contracts;
 using InertiaCore.Models;
+using InertiaCore.Resolvers;
 using InertiaCore.Services;
 using InertiaCore.Ssr;
 using InertiaCore.Utils;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace InertiaCore.Extensions;
@@ -59,6 +61,9 @@ public static class Configure
     {
         services.AddHttpContextAccessor();
         services.AddHttpClient();
+        
+        services.TryAddSingleton<IInertiaVersionResolver>(sp => 
+            new StaticInertiaVersionResolver(DateTime.UtcNow.Ticks.ToString()));
 
         // Per-request state container — seed Version from InertiaOptions so that
         // the asset version is available consistently across the middleware check
