@@ -38,18 +38,16 @@ public static class Configure
 
         app.Use(async (context, next) =>
         {
-            // Per the Inertia.js protocol, asset version conflicts must be reported
-            // on ALL Inertia requests, not just GET.
-            // See: https://inertiajs.com/the-protocol#asset-versioning
-            var serverVersion = Inertia.GetVersion();
-            if (serverVersion != null
+            var resolver = app.ApplicationServices.GetRequiredService<IInertiaVersionResolver>();
+            var serverVersion = resolver.GetVersion();
+            
+            if (!string.IsNullOrEmpty(serverVersion)
                 && context.IsInertiaRequest()
                 && context.Request.Headers[InertiaHeader.Version] != serverVersion)
             {
                 await OnVersionChange(context, app);
                 return;
             }
-
             await next();
         });
 
