@@ -1,378 +1,415 @@
-# Inertia.js ASP.NET Adapter
+# InertiaCore.AspNetCore
 
-[![NuGet](https://img.shields.io/nuget/v/InertiaCore.AspNetCore?style=flat-square&color=blue)](https://www.nuget.org/packages/AspNetCore.InertiaCore)
+[![NuGet](https://img.shields.io/nuget/v/InertiaCore.AspNetCore?style=flat-square&color=blue)](https://www.nuget.org/packages/InertiaCore.AspNetCore)
+[![Downloads](https://img.shields.io/nuget/dt/InertiaCore.AspNetCore?style=flat-square)](https://www.nuget.org/packages/InertiaCore.AspNetCore)
 [![Build](https://img.shields.io/github/actions/workflow/status/kapi2289/InertiaCore/dotnet.yml?style=flat-square)](https://github.com/kapi2289/InertiaCore/actions)
-[![NuGet](https://img.shields.io/nuget/dt/AspNetCore.InertiaCore?style=flat-square)](https://www.nuget.org/packages/AspNetCore.InertiaCore)
 [![License](https://img.shields.io/github/license/kapi2289/InertiaCore?style=flat-square)](https://github.com/kapi2289/InertiaCore/blob/main/LICENSE)
 
-This project is based on the original InertiaCore project by Kacper Ziubryniewicz.
+# Inertia.js Adapter for ASP.NET Core
 
-## Features
+A production-ready ASP.NET Core adapter for building modern **Inertia.js** applications with .NET.
 
-- [x] Validation error handling.
-- [x] Shared data.
-- [x] Partial and async lazy props.
-- [x] Server-side rendering.
-- [x] Vite helper.
-- [x] Cycle-safe model with relations data serialization.
-- [x] Properly working **PATCH**, **PUT** and **DELETE** redirections.
+InertiaCore.AspNetCore provides a complete server-side integration layer for Inertia.js, enabling you to build modern monolithic applications using your preferred frontend framework while keeping the simplicity of server-side routing and controllers.
 
-## Table of contents
+Supports:
 
-- [Examples](#examples)
-- [Installation](#installation)
-- [Getting started](#getting-started)
-- [Usage](#usage)
-  * [Frontend](#frontend)
-  * [Backend](#backend)
-- [Features](#features)
-  * [Shared data](#shared-data)
-  * [Async Lazy Props](#async-lazy-props)
-  * [Server-side rendering](#server-side-rendering)
-  * [Vite helper](#vite-helper)
-    - [Examples](#examples-1)
+- ASP.NET Core MVC
+- ASP.NET Core Minimal APIs
+- Inertia.js v3
+- Vue, React, and other Inertia-compatible frontend frameworks
 
-## Examples
+This project is based on the original [InertiaCore](https://github.com/kapi2289/InertiaCore) project by Kacper Ziubryniewicz.
 
-You can check out these examples to have some starting point for your new application.
+---
 
-- **Vue** - [NejcBW/InertiaCoreVueTemplate](https://github.com/NejcBW/InertiaCoreVueTemplate)
-- **React** - [nicksoftware/React-AspnetCore-inertiaJS](https://github.com/nicksoftware/React-AspnetCore-inertiaJS)
+## Why InertiaCore?
 
-## Installation
+InertiaCore brings the Inertia.js server adapter experience to the .NET ecosystem.
 
-1. Using Package Manager: `PM> Install-Package InertiaCore.AspNetCore`
-2. Using .NET CLI: `dotnet add package InertiaCore.AspNetCore`
+It provides:
 
-## Getting started
+- A complete Inertia request/response pipeline
+- Server-side rendering support
+- Lazy and async props
+- Shared application data
+- Validation error handling
+- Vite integration
+- Asset version management
+- Protocol-compliant redirects
+- Minimal API support
 
-You need to add few lines to the `Program.cs` or `Starup.cs` file.
+No separate API layer is required. Build your application with server-side routing and modern frontend components.
 
-```csharp
-using InertiaCore.Extensions;
+---
 
-[...]
+# Features
 
-builder.Services.AddInertia();
+## Inertia.js v3 Support
 
-[...]
+✅ Full support for the latest Inertia.js v3 protocol.
 
-app.UseInertia();
-```
+Includes:
 
-## Usage
+- Inertia request detection
+- Version handling
+- Partial reloads
+- Lazy props
+- Shared props
+- Redirect handling
+- Error bag support
+- Response formatting
 
-### Frontend
+---
 
-Create a file `/Views/App.cshtml`.
+## ASP.NET Core Support
 
-```html
-@using InertiaCore
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+Supported application styles:
 
-  <title inertia>My App</title>
-
-  @await Inertia.Head(Model)
-
-  <script type="module">
-    import RefreshRuntime from 'http://localhost:5173/@@react-refresh';
-
-    RefreshRuntime.injectIntoGlobalHook(window);
-
-    window.$RefreshReg$ = () => {};
-    window.$RefreshSig$ = () => (type) => type;
-    window.__vite_plugin_react_preamble_installed__ = true;
-  </script>
-</head>
-
-<body>
-@await Inertia.Html(Model)
-
-<script type="module" src="http://localhost:5173/@@vite/client"></script>
-<script type="module" src="http://localhost:5173/src/main.tsx"></script>
-</body>
-</html>
-
-```
-
-You can change the root view file using:
+✅ MVC Controllers
 
 ```csharp
-builder.Services.AddInertia(options =>
+public IActionResult Index()
 {
-    options.RootView = "~/Views/App.cshtml";
-    options.SsrEnabled = false;
+    return Inertia.Render("Dashboard");
+}
+```
+
+✅ Minimal APIs
+
+```csharp
+app.MapGet("/dashboard", () =>
+{
+    return Inertia.Render("Dashboard");
 });
 ```
 
-### Backend
+---
 
-To pass data to a page component, use `Inertia.Render()`.
+## Validation Error Handling
 
-```csharp
-    public async Task<IActionResult> Index()
-    {
-        var posts = await _context.Posts.ToListAsync();
-        
-        var data = new
-        {
-            Posts = posts,
-        };
-        
-        return Inertia.Render("Posts", data);
-    }
-```
+Automatic validation handling using ASP.NET Core ModelState.
 
-To make a form endpoint, remember to add `[FromBody]` to your model parameter, because the request data is passed using
-JSON.
+Features:
 
-```csharp
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] Post post)
-    {
-        if (!ModelState.IsValid)
-        {
-            // The validation errors are passed automatically.
-            return await Index();
-        }
-        
-        _context.Add(post);
-        await _context.SaveChangesAsync();
-        
-        return RedirectToAction("Index");
-    }
-```
+- Automatic validation error collection
+- Named validation error bags
+- `X-Inertia-Error-Bag` support
+- Standardized string array error responses
 
-## Features
+Example:
 
-### Shared data
-
-You can add some shared data to your views using for example middlewares:
-
-```csharp
-using InertiaCore;
-
-[...]
-
-app.Use(async (context, next) =>
+```json
 {
-    var userId = context.Session.GetInt32("userId");
-    
-    Inertia.Share("auth", new
+  "errors": {
+    "default": {
+      "email": [
+        "The email field is required."
+      ]
+    }
+  }
+}
+```
+
+---
+
+## Shared Data
+
+Share data globally across all Inertia responses.
+
+Example:
+
+```csharp
+Inertia.Share("auth", new
+{
+    UserId = userId
+});
+```
+
+or:
+
+```csharp
+Inertia.Share(new Dictionary<string, object?>
+{
+    ["auth"] = new
     {
         UserId = userId
-    });
-    
-    // Or
-    
-    Inertia.Share(new Dictionary<string, object?>
-    {
-        ["auth"] => new
-        {
-            UserId = userId
-        }
-    });
+    }
 });
 ```
 
-### Async Lazy Props
+---
 
-You can use async lazy props to load data asynchronously in your components. This is useful for loading data that is not needed for the initial render of the page.
+## Lazy and Async Props
+
+Load expensive data only when required.
+
+Example:
+
 ```csharp
-
-// simply use the LazyProps the same way you normally would, except pass in an async function
-
-    public async Task<IActionResult> Index()
+public IActionResult Index()
+{
+    return Inertia.Render("Posts", new
     {
-        var posts = new LazyProp(async () => await _context.Posts.ToListAsync());
-        
-        var data = new
+        Posts = new LazyProp(async () =>
         {
-            Posts = posts,
-        };
-        
-        return Inertia.Render("Posts", data);
-    }
-
-
+            return await _context.Posts.ToListAsync();
+        })
+    });
+}
 ```
 
-### Server-side rendering
+---
 
-If you want to enable SSR in your Inertia app, remember to add `Inertia.Head()` to your layout:
+## Server-Side Rendering
 
-```html
-@using InertiaCore
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title inertia>My App</title>
-    
-    @await Inertia.Head(Model)
-</head>
-<body>
-@await Inertia.Html(Model)
+Built-in support for Inertia SSR.
 
-<script src="/js/app.js"></script>
-</body>
-</html>
-```
-
-and enable the SSR option:
+Enable SSR:
 
 ```csharp
 builder.Services.AddInertia(options =>
 {
     options.SsrEnabled = true;
-    
-    // You can optionally set a different URL than the default.
-    options.SsrUrl = "http://127.0.0.1:13714/render"; // default
 });
 ```
 
-### Vite Helper
+Configure your SSR endpoint:
 
-A Vite helper class is available to automatically load your generated styles or scripts by simply using the `@Vite.Input("src/main.tsx")` helper. You can also enable HMR when using React by using the `@Vite.ReactRefresh()` helper. This pairs well with the `laravel-vite-plugin` npm package.
+```csharp
+builder.Services.AddInertia(options =>
+{
+    options.SsrUrl = "http://127.0.0.1:13714/render";
+});
+```
 
-To get started with the Vite Helper, you will need to add one more line to the `Program.cs` or `Starup.cs` file.
+---
+
+## Vite Integration
+
+Includes helpers for Vite-powered applications.
+
+Register:
+
+```csharp
+builder.Services.AddViteHelper();
+```
+
+Use in your layout:
+
+```html
+@Vite.Input("src/main.ts")
+```
+
+React HMR support:
+
+```html
+@Vite.ReactRefresh()
+```
+
+---
+
+## Asset Version Management
+
+Flexible version resolution support.
+
+Built-in providers:
+
+- Default static version provider
+- Delegate-based version provider
+- Custom provider implementations
+
+Example:
+
+```csharp
+builder.Services.AddInertia(options =>
+{
+    options.VersionResolver = () =>
+    {
+        return "1.0.0";
+    };
+});
+```
+
+---
+
+## Inertia Redirect Handling
+
+Automatically handles Inertia-compliant redirects.
+
+Supports:
+
+- GET redirects
+- POST redirects
+- PUT redirects
+- PATCH redirects
+- DELETE redirects
+
+Non-GET requests automatically use `303 See Other`.
+
+---
+
+## Empty Response Handling
+
+Empty responses from Inertia requests are automatically converted into redirects.
+
+Handled scenarios:
+
+```csharp
+return Ok();
+```
+
+```csharp
+return NoContent();
+```
+
+The adapter redirects users back to the previous page using:
+
+1. The `Referer` header
+2. Current request URL fallback
+
+---
+
+# Installation
+
+Install from NuGet:
+
+### Package Manager
+
+```powershell
+Install-Package InertiaCore.AspNetCore
+```
+
+### .NET CLI
+
+```bash
+dotnet add package InertiaCore.AspNetCore
+```
+
+---
+
+# Getting Started
+
+Add Inertia services:
 
 ```csharp
 using InertiaCore.Extensions;
 
-[...]
+builder.Services.AddInertia();
+```
 
-builder.Services.AddViteHelper();
+Add middleware:
 
-// Or with options (default values shown)
+```csharp
+app.UseInertia();
+```
 
-builder.Services.AddViteHelper(options =>
+Your application is now ready to serve Inertia responses.
+
+---
+
+# Frontend Setup
+
+Create your root view.
+
+Example:
+
+`Views/App.cshtml`
+
+```html
+@using InertiaCore
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <title inertia>
+        My Application
+    </title>
+
+    @await Inertia.Head(Model)
+</head>
+
+<body>
+
+@await Inertia.Html(Model)
+
+<script type="module" src="/src/main.ts"></script>
+
+</body>
+</html>
+```
+
+---
+
+# Backend Usage
+
+Render an Inertia page:
+
+```csharp
+public IActionResult Index()
 {
-    options.PublicDirectory = "wwwroot";
-    options.BuildDirectory = "build";
-    options.HotFile = "hot";
-    options.ManifestFilename = "manifest.json";
-});
+    return Inertia.Render("Dashboard", new
+    {
+        User = user
+    });
+}
 ```
 
-
-#### Examples
 ---
 
-Here's an example for a TypeScript React app with HMR:
+# Configuration
 
-```html
-@using InertiaCore
-@using InertiaCore.Utils
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title inertia>My App</title>
-  </head>
-  <body>
-    @* This has to go first, otherwise preamble error *@
-    @Vite.ReactRefresh()
-    @await Inertia.Html(Model)
-    @Vite.Input("src/main.tsx")
-  </body>
-</html>
-```
+Customize Inertia:
 
-with the corresponding `vite.config.js`, which is recommended to create in the `ClientApp` directory:
+```csharp
+builder.Services.AddInertia(options =>
+{
+    options.RootView = "~/Views/App.cshtml";
 
-```js
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import laravel from "laravel-vite-plugin";
+    options.SsrEnabled = true;
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    laravel({
-      input: ["src/main.tsx"],
-      publicDirectory: "../wwwroot/",
-    }),
-    react(),
-  ],
-  build: {
-    emptyOutDir: true,
-  },
+    options.SsrUrl =
+        "http://127.0.0.1:13714/render";
 });
 ```
 
 ---
 
-Here's an example for a TypeScript Vue app with Hot Reload:
+# Example Applications
 
-```html
-@using InertiaCore
-@using InertiaCore.Utils
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title inertia>My App</title>
-  </head>
-  <body>
-    @await Inertia.Html(Model)
-    @Vite.Input("src/app.ts")
-  </body>
-</html>
-```
+Example projects:
 
-with the corresponding `vite.config.js`, which is recommended to create in the `ClientApp` directory:
+- Vue:
+  https://github.com/NejcBW/InertiaCoreVueTemplate
 
-```js
-import {defineConfig} from 'vite';
-import vue from '@vitejs/plugin-vue';
-import laravel from "laravel-vite-plugin";
-
-export default defineConfig({
-  plugins: [
-    laravel({
-      input: ["src/app.ts"],
-      publicDirectory: "../wwwroot/",
-      refresh: true,
-    }),
-    vue({
-      template: {
-        transformAssetUrls: {
-          base: null,
-          includeAbsolute: false,
-        },
-      },
-    }),
-  ],
-  build: {
-    emptyOutDir: true,
-  },
-});
-```
+- React:
+  https://github.com/nicksoftware/React-AspnetCore-inertiaJS
 
 ---
 
-Here's an example that just produces a single CSS file:
+# Roadmap
 
-```html
-@using InertiaCore
-@using InertiaCore.Utils
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  </head>
-  <body>
-    @await Inertia.Html(Model)
-    @Vite.Input("src/main.scss")
-  </body>
-</html>
-```
+Upcoming improvements:
+
+- Additional Inertia protocol coverage
+- Improved developer tooling
+- More ASP.NET Core integrations
+- Additional examples and templates
+
+---
+
+# Contributing
+
+Contributions, issues, and feature requests are welcome.
+
+Please open an issue or submit a pull request.
+
+---
+
+# License
+
+Licensed under the MIT License.
+
+See [LICENSE](LICENSE) for details.
