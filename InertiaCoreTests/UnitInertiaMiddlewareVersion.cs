@@ -136,7 +136,11 @@ public class UnitInertiaMiddlewareVersion
                     .Configure(app =>
                     {
                         app.UseMiddleware<InertiaMiddleware>();
-                        app.Run(ctx => ctx.Response.WriteAsync("OK"));
+                        app.Run(ctx =>
+                        {
+                            ctx.Response.ContentType = "text/plain";
+                            return ctx.Response.WriteAsync("OK");
+                        });
                     });
             })
             .StartAsync();

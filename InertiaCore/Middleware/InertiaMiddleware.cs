@@ -41,7 +41,22 @@ public class InertiaMiddleware
 
         context.Response.OnStarting(() =>
         {
-            if (context.IsInertiaRequest() || context.Items.ContainsKey("InertiaResponse"))
+            var isInertiaRequest = context.IsInertiaRequest();
+            var isInertiaResponse = context.Items.ContainsKey("InertiaResponse") || context.Response.Headers.ContainsKey("X-Inertia");
+
+            if (isInertiaRequest && !isInertiaResponse && 
+                (context.Response.StatusCode == 200 || context.Response.StatusCode == 204) &&
+                string.IsNullOrEmpty(context.Response.ContentType) &&
+                (context.Response.ContentLength == null || context.Response.ContentLength == 0))
+            {
+                var referer = context.Request.Headers["Referer"].ToString();
+                var backUrl = !string.IsNullOrEmpty(referer) ? referer : context.Request.Path + context.Request.QueryString;
+
+                var isNonGet = new[] { "POST", "PUT", "PATCH", "DELETE" }.Contains(context.Request.Method);
+                context.Response.StatusCode = isNonGet ? 303 : 302;
+                context.Response.Headers["Location"] = backUrl;
+            }
+            else if (isInertiaRequest || context.Items.ContainsKey("InertiaResponse"))
             {
                 context.Response.Headers["X-Inertia"] = "true";
                 context.Response.Headers["X-Inertia-Version"] = currentVersion;
