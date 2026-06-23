@@ -1,8 +1,10 @@
 using System.Net;
 using InertiaCore.Contracts;
+using InertiaCore.Filters;
 using InertiaCore.Models;
 using InertiaCore.Resolvers;
 using InertiaCore.Services;
+using InertiaCore.Services.Version;
 using InertiaCore.Ssr;
 using InertiaCore.Utils;
 using Microsoft.AspNetCore.Builder;
@@ -57,11 +59,33 @@ public static class Configure
     public static IServiceCollection AddInertia(this IServiceCollection services,
         Action<InertiaOptions>? options = null)
     {
+        if (options != null) services.Configure(options);
+
         services.AddHttpContextAccessor();
         services.AddHttpClient();
-        
-        services.TryAddSingleton<IInertiaVersionResolver>(sp => 
-            new StaticInertiaVersionResolver(DateTime.UtcNow.Ticks.ToString()));
+
+        services.AddScoped<IErrorBagService, ErrorBagService>();
+        services.AddScoped<InertiaValidationFilter>();
+
+        services.AddScoped<IInertiaVersionProvider>(sp =>
+        {
+            var opt = sp.GetRequiredService<IOptions<InertiaOptions>>().Value;
+            if (opt.VersionResolver != null)
+            {
+                return new DelegateInertiaVersionProvider(() => opt.VersionResolver(sp));
+            }
+            if (opt.Version != null)
+            {
+                return new DefaultInertiaVersionProvider(opt.Version);
+            }
+            throw new InvalidOperationException("Inertia version or version resolver must be configured in InertiaOptions.");
+        });
+
+        services.AddScoped<IInertiaVersionResolver>(sp =>
+        {
+            var provider = sp.GetRequiredService<IInertiaVersionProvider>();
+            return new DelegateInertiaVersionResolver(providerSp => providerSp.GetRequiredService<IInertiaVersionProvider>().GetVersion(), sp);
+        });
 
         // Per-request state container — seed Version from InertiaOptions so that
         // the asset version is available consistently across the middleware check
@@ -84,9 +108,11 @@ public static class Configure
         // Gateway is safe as Singleton since IHttpClientFactory manages HttpClient lifetimes.
         services.AddSingleton<IGateway, Gateway>();
 
-        services.Configure<MvcOptions>(mvcOptions => { mvcOptions.Filters.Add<InertiaActionFilter>(); });
-
-        if (options != null) services.Configure(options);
+        services.Configure<MvcOptions>(mvcOptions =>
+        {
+            mvcOptions.Filters.Add<InertiaActionFilter>();
+            mvcOptions.Filters.Add<InertiaValidationFilter>();
+        });
 
         return services;
     }

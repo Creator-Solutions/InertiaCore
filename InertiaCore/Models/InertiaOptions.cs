@@ -1,3 +1,5 @@
+using System;
+
 namespace InertiaCore.Models;
 
 public class InertiaOptions
@@ -9,4 +11,6 @@ public class InertiaOptions
     public bool EncryptHistory { get; set; } = false;
 
     public string? Version { get; set; }
+
+    public Func<IServiceProvider, string>? VersionResolver { get; set; }
 }

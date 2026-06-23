@@ -305,31 +305,50 @@ public class Response : IActionResult, IResult
     protected internal IActionResult GetResult() => _context!.IsInertiaRequest() ? GetJson() : GetView();
 
     /// <summary>
-    /// Gets validation errors from ModelState.
-    /// If the X-Inertia-Error-Bag header is present, errors are scoped under a named bag.
+    /// Gets validation errors from IErrorBagService, falling back to ModelState.
+    /// If errors exist for the current bag name, they are nested under that bag name.
     /// See: https://inertiajs.com/error-handling#error-bags
     /// </summary>
     private Dictionary<string, object?> GetErrors()
     {
-        if (!_context!.ModelState.IsValid)
+        var errorBagService = _context?.HttpContext?.RequestServices?.GetService(typeof(IErrorBagService)) as IErrorBagService;
+        if (errorBagService != null)
         {
-            var errors = _context!.ModelState.ToDictionary(
-                o => o.Key.ToCamelCase(),
-                o => o.Value?.Errors.FirstOrDefault()?.ErrorMessage ?? "");
+            // If the controller/action didn't run the filter (e.g. Minimal APIs or test paths),
+            // extract validation errors from ModelState and add them to the bag.
+            if (_context?.ModelState != null && !_context.ModelState.IsValid)
+            {
+                _context.ModelState.AddModelErrorsToBag(errorBagService, errorBagService.CurrentBagName);
+            }
 
-            // X-Inertia-Error-Bag scopes validation errors to a named bag.
-            var errorBag = _context.HttpContext.Request.Headers[InertiaHeader.ErrorBag].ToString();
+            var currentBagName = errorBagService.CurrentBagName;
+            var errors = errorBagService.GetErrors(currentBagName);
 
-            if (!string.IsNullOrEmpty(errorBag))
+            if (errors != null && errors.Count > 0)
             {
                 return new Dictionary<string, object?>
                 {
-                    [errorBag] = errors
+                    [currentBagName] = errors
                 };
             }
+        }
+        else if (_context?.ModelState != null && !_context.ModelState.IsValid)
+        {
+            // Fallback if IErrorBagService is not registered (unlikely, but good for backward compatibility/unit tests)
+            var errors = _context.ModelState
+                .Where(x => x.Value != null && x.Value.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key.ToCamelCase(),
+                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                );
 
-            return new Dictionary<string, object?>(errors
-                .ToDictionary(kv => kv.Key, kv => (object?)kv.Value));
+            var errorBag = _context.HttpContext?.Request?.Headers?[InertiaHeader.ErrorBag].ToString();
+            var bagName = !string.IsNullOrEmpty(errorBag) ? errorBag : "default";
+
+            return new Dictionary<string, object?>
+            {
+                [bagName] = errors
+            };
         }
 
         return new Dictionary<string, object?>();

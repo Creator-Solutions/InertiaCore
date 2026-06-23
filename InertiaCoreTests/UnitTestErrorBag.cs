@@ -6,7 +6,7 @@ namespace InertiaCoreTests;
 public partial class Tests
 {
     [Test]
-    [Description("Request without X-Inertia-Error-Bag returns flat errors.")]
+    [Description("Request without X-Inertia-Error-Bag returns errors nested under default bag.")]
     public async Task TestErrorsWithoutErrorBag()
     {
         var response = _factory.Render("Test/Page", new
@@ -35,7 +35,12 @@ public partial class Tests
             {
                 "errors", new Dictionary<string, object?>
                 {
-                    { "field", "Error" }
+                    {
+                        "default", new Dictionary<string, string[]>
+                        {
+                            { "field", new[] { "Error" } }
+                        }
+                    }
                 }
             }
         }));
@@ -73,9 +78,9 @@ public partial class Tests
                 "errors", new Dictionary<string, object?>
                 {
                     {
-                        "myForm", new Dictionary<string, string>
+                        "myForm", new Dictionary<string, string[]>
                         {
-                            { "field", "Error" }
+                            { "field", new[] { "Error" } }
                         }
                     }
                 }

@@ -38,11 +38,6 @@ public class UnitInertiaVersionConflict
         request.Headers.Add("X-Inertia", "true");
         request.Headers.Add("X-Inertia-Version", "client-v1");
 
-        foreach (var value in request.Headers)
-        {
-            Console.WriteLine("Header: " + value.Key + ": " + value.Value.FirstOrDefault());
-        }
-
         var response = await client.SendAsync(request);
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));

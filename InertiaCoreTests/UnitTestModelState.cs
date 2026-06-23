@@ -27,9 +27,14 @@ public partial class Tests
         {
             { "test", "Test" },
             {
-                "errors", new Dictionary<string, string>
+                "errors", new Dictionary<string, object?>
                 {
-                    { "field", "Error" }
+                    {
+                        "default", new Dictionary<string, string[]>
+                        {
+                            { "field", new[] { "Error" } }
+                        }
+                    }
                 }
             }
         }));
