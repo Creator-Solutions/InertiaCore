@@ -146,11 +146,17 @@ public class Response : IActionResult, IResult
     /// </summary>
     private Dictionary<string, object?> ResolveSharedProps(Dictionary<string, object?> props)
     {
-        if (_state.SharedProps.Count == 0)
+        var globalShared = Inertia.GetSharedData();
+        var requestShared = _state.SharedProps;
+
+        if (globalShared.Count == 0 && requestShared.Count == 0)
             return props;
 
-        var result = new Dictionary<string, object?>(props.Count + _state.SharedProps.Count);
-        foreach (var (key, value) in _state.SharedProps)
+        var result = new Dictionary<string, object?>(props.Count + globalShared.Count + requestShared.Count);
+        foreach (var (key, value) in globalShared)
+            result[key] = value;
+
+        foreach (var (key, value) in requestShared)
             result[key] = value;
 
         foreach (var (key, value) in props)

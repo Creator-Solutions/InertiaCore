@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using InertiaCore.Contracts;
+using InertiaCore.Extensions;
 using InertiaCore.Props;
 using InertiaCore.Utils;
 using Microsoft.AspNetCore.Html;
@@ -13,12 +14,17 @@ public static class Inertia
 {
     private static IResponseFactory _factory = default!;
     private static IHttpContextAccessor? _contextAccessor;
+    private static readonly Dictionary<string, object?> _sharedData = new();
 
     internal static void UseFactory(IResponseFactory factory, IHttpContextAccessor? contextAccessor = null)
     {
         _factory = factory;
         _contextAccessor = contextAccessor;
     }
+
+    internal static void ClearSharedData() => _sharedData.Clear();
+
+    internal static Dictionary<string, object?> GetSharedData() => new(_sharedData);
 
     private static IInertia ResolveService()
     {
@@ -49,9 +55,13 @@ public static class Inertia
     
     public static LocationResult Location(string url) => _factory.Location(url);
     
-    public static void Share(string key, object? value) => _factory.Share(key, value);
+    public static void Share(string key, object? value) => _sharedData[key.ToCamelCase()] = value;
     
-    public static void Share(IDictionary<string, object?> data) => _factory.Share(data);
+    public static void Share(IDictionary<string, object?> data)
+    {
+        foreach (var (key, value) in data)
+            _sharedData[key.ToCamelCase()] = value;
+    }
     
     public static AlwaysProp Always(string value) => _factory.Always(value);
     
