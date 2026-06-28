@@ -306,7 +306,8 @@ public class Response : IActionResult, IResult
 
     /// <summary>
     /// Gets validation errors from IErrorBagService, falling back to ModelState.
-    /// If errors exist for the current bag name, they are nested under that bag name.
+    /// If the bag name is "default", errors are flattened (matching Laravel's behavior).
+    /// Named bags are nested under their bag name.
     /// See: https://inertiajs.com/error-handling#error-bags
     /// </summary>
     private Dictionary<string, object?> GetErrors()
@@ -326,6 +327,11 @@ public class Response : IActionResult, IResult
 
             if (errors != null && errors.Count > 0)
             {
+                if (currentBagName == ErrorBagService.DefaultBagName)
+                {
+                    return errors.ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value);
+                }
+
                 return new Dictionary<string, object?>
                 {
                     [currentBagName] = errors
@@ -343,7 +349,12 @@ public class Response : IActionResult, IResult
                 );
 
             var errorBag = _context.HttpContext?.Request?.Headers?[InertiaHeader.ErrorBag].ToString();
-            var bagName = !string.IsNullOrEmpty(errorBag) ? errorBag : "default";
+            var bagName = !string.IsNullOrEmpty(errorBag) ? errorBag : ErrorBagService.DefaultBagName;
+
+            if (bagName == ErrorBagService.DefaultBagName)
+            {
+                return errors.ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value);
+            }
 
             return new Dictionary<string, object?>
             {
