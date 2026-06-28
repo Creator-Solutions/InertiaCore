@@ -21,6 +21,8 @@ public partial class Tests
     [SetUp]
     public void Setup()
     {
+        Inertia.ClearSharedData();
+
         var contextAccessor = new Mock<IHttpContextAccessor>();
         var httpClientFactory = new Mock<IHttpClientFactory>();
 
