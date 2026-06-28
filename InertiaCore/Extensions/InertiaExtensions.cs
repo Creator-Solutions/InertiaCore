@@ -16,9 +16,9 @@ internal static class InertiaExtensions
         Uri.UnescapeDataString(context.Request.GetEncodedPathAndQuery());
 
     internal static string RequestedUri(this ActionContext context) => context.HttpContext.RequestedUri();
-
+    
     internal static bool IsInertiaRequest(this HttpContext context) =>
-        bool.TryParse(context.Request.Headers[InertiaHeader.Inertia], out _);
+        context.Request.Headers[InertiaHeader.Inertia] == "true";
 
     internal static bool IsInertiaRequest(this ActionContext context) => context.HttpContext.IsInertiaRequest();
 
