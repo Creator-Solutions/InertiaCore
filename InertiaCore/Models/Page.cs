@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace InertiaCore.Models;
 
 internal class Page
@@ -6,6 +8,10 @@ internal class Page
     public string Component { get; set; } = default!;
     public string? Version { get; set; }
     public string Url { get; set; } = default!;
-    public bool EncryptHistory { get; set; } = false;
-    public bool ClearHistory { get; set; } = false;
+
+    [JsonIgnore]
+    public bool EncryptHistory { get; set; }
+
+    [JsonIgnore]
+    public bool ClearHistory { get; set; }
 }
