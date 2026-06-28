@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -63,6 +64,44 @@ public partial class Tests
         httpContext.SetupGet(c => c.Request).Returns(request.Object);
         httpContext.SetupGet(c => c.Response).Returns(response.Object);
         httpContext.SetupGet(c => c.Features).Returns(features);
+
+        var context = new ActionContext(httpContext.Object, new RouteData(), new ActionDescriptor());
+
+        if (modelState == null) return context;
+        foreach (var (key, value) in modelState) context.ModelState.AddModelError(key, value);
+
+        return context;
+    }
+
+    /// <summary>
+    ///     Prepares ActionContext with IErrorBagService registered in the service provider.
+    ///     This exercises the primary code path in Response.GetErrors().
+    /// </summary>
+    private static ActionContext PrepareContextWithServices(
+        HeaderDictionary? headers = null,
+        Dictionary<string, string>? modelState = null,
+        IErrorBagService? errorBagService = null)
+    {
+        var request = new Mock<HttpRequest>();
+        request.SetupGet(r => r.Headers).Returns(headers ?? new HeaderDictionary());
+
+        var response = new Mock<HttpResponse>();
+        response.SetupGet(r => r.Headers).Returns(new HeaderDictionary());
+        var statusCode = 200;
+        response.SetupGet(r => r.StatusCode).Returns(() => statusCode);
+        response.SetupSet(r => r.StatusCode = It.IsAny<int>()).Callback<int>(v => statusCode = v);
+
+        var features = new FeatureCollection();
+
+        var httpContext = new Mock<HttpContext>();
+        httpContext.SetupGet(c => c.Request).Returns(request.Object);
+        httpContext.SetupGet(c => c.Response).Returns(response.Object);
+        httpContext.SetupGet(c => c.Features).Returns(features);
+
+        var svc = errorBagService ?? new ErrorBagService();
+        var services = new ServiceCollection();
+        services.AddSingleton<IErrorBagService>(svc);
+        httpContext.SetupGet(c => c.RequestServices).Returns(services.BuildServiceProvider());
 
         var context = new ActionContext(httpContext.Object, new RouteData(), new ActionDescriptor());
 

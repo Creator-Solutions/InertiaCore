@@ -25,8 +25,10 @@ public interface IErrorBagService
 
 public class ErrorBagService : IErrorBagService
 {
+    public const string DefaultBagName = "default";
+
     private readonly Dictionary<string, Dictionary<string, string[]>> _errors = new();
-    public string CurrentBagName { get; set; } = "default"; // fallback
+    public string CurrentBagName { get; set; } = DefaultBagName;
 
     public void AddErrors(string bagName, Dictionary<string, string[]> errors)
     {
