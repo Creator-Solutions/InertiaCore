@@ -9,6 +9,8 @@ namespace InertiaCore.Utils;
 internal class InertiaActionFilter : IActionFilter
 {
     private readonly IUrlHelperFactory _urlHelperFactory;
+    
+    private static readonly HashSet<string> _inertiaRedirectMethods = ["POST", "PUT", "PATCH", "DELETE"];
 
     public InertiaActionFilter(IUrlHelperFactory urlHelperFactory) => _urlHelperFactory = urlHelperFactory;
 
@@ -20,7 +22,7 @@ internal class InertiaActionFilter : IActionFilter
     public void OnActionExecuted(ActionExecutedContext context)
     {
         if (!context.IsInertiaRequest()
-            || !new[] { "PUT", "PATCH", "DELETE" }.Contains(context.HttpContext.Request.Method)) return;
+            || !_inertiaRedirectMethods.Contains(context.HttpContext.Request.Method)) return;
 
         var destinationUrl = context.Result switch
         {
@@ -33,7 +35,7 @@ internal class InertiaActionFilter : IActionFilter
 
         if (destinationUrl == null) return;
         context.HttpContext.Response.Headers.Override("Location", destinationUrl);
-        context.Result = new StatusCodeResult((int)HttpStatusCode.RedirectMethod);
+        context.Result = new StatusCodeResult((int)HttpStatusCode.SeeOther);
     }
 
     private string? GetUrl(RedirectToActionResult result, ActionContext context)
