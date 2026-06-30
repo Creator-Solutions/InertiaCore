@@ -40,7 +40,7 @@ public static class Configure
 
         app.Use(async (context, next) =>
         {
-            var resolver = app.ApplicationServices.GetRequiredService<IInertiaVersionResolver>();
+            var resolver = context.RequestServices.GetRequiredService<IInertiaVersionResolver>();
             var serverVersion = resolver.GetVersion();
             
             if (!string.IsNullOrEmpty(serverVersion)
@@ -128,7 +128,7 @@ public static class Configure
 
     private static async Task OnVersionChange(HttpContext context, IApplicationBuilder app)
     {
-        var tempData = app.ApplicationServices.GetRequiredService<ITempDataDictionaryFactory>()
+        var tempData = context.RequestServices.GetRequiredService<ITempDataDictionaryFactory>()
             .GetTempData(context);
 
         if (tempData.Any()) tempData.Keep();
