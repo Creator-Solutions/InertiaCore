@@ -24,6 +24,9 @@ internal static class InertiaExtensions
 
     internal static string ToCamelCase(this string s) => JsonNamingPolicy.CamelCase.ConvertName(s);
 
+    internal static string ToCamelCasePath(this string s) =>
+        string.Join('.', s.Split('.').Select(segment => segment.ToCamelCase()));
+
     internal static bool Override<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value)
     {
         if (dictionary.TryAdd(key, value)) return false;

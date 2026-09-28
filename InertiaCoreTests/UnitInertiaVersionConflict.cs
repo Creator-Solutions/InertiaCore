@@ -64,7 +64,11 @@ public class UnitInertiaVersionConflict
                     .Configure(app =>
                     {
                         app.UseInertia();
-                        app.Run(ctx => ctx.Response.WriteAsync("OK"));
+                        app.Run(ctx =>
+                        {
+                            ctx.Response.ContentType = "text/plain";
+                            return ctx.Response.WriteAsync("OK");
+                        });
                     });
             })
             .StartAsync();

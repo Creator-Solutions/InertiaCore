@@ -32,4 +32,31 @@
     <ItemGroup>
         <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\InertiaCore.SourceGenerators\InertiaCore.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <!--
+        Packs the source generator into this package under analyzers/dotnet/cs.
+        The generator output path is resolved via the MSBuild GetTargetPath target so
+        it stays correct if the generator's target framework changes. Only included
+        for a single TFM to avoid duplicate entries in the multi-targeted package.
+    -->
+    <Target Name="IncludeGeneratorInPackage"
+            BeforeTargets="_GetPackageFiles">
+        <MSBuild Projects="..\InertiaCore.SourceGenerators\InertiaCore.SourceGenerators.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_GeneratorDll" />
+        </MSBuild>
+        <ItemGroup>
+            <None Include="@(_GeneratorDll)"
+                  Pack="true"
+                  PackagePath="analyzers/dotnet/cs"
+                  Visible="false" />
+        </ItemGroup>
+    </Target>
 </Project>

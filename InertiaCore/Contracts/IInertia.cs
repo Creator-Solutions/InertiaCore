@@ -94,6 +94,43 @@ public interface IInertia
     DeferredProp Defer(Func<Task<object?>> factory);
 
     /// <summary>
+    /// Create a MergeProp whose value is merged with the existing client-side value
+    /// during partial reloads instead of replacing it.
+    /// </summary>
+    /// <param name="value">The value to merge.</param>
+    MergeProp Merge(object? value);
+
+    /// <summary>
+    /// Create a MergeProp with a synchronous factory.
+    /// </summary>
+    /// <param name="callback">The factory that produces the value to merge.</param>
+    MergeProp Merge(Func<object?> callback);
+
+    /// <summary>
+    /// Create a MergeProp with an asynchronous factory.
+    /// </summary>
+    /// <param name="callback">The asynchronous factory that produces the value to merge.</param>
+    MergeProp Merge(Func<Task<object?>> callback);
+
+    /// <summary>
+    /// Create a MergeProp that is deep merged with the existing client-side value.
+    /// </summary>
+    /// <param name="value">The value to deep merge.</param>
+    MergeProp DeepMerge(object? value);
+
+    /// <summary>
+    /// Create a deep-merged MergeProp with a synchronous factory.
+    /// </summary>
+    /// <param name="callback">The factory that produces the value to deep merge.</param>
+    MergeProp DeepMerge(Func<object?> callback);
+
+    /// <summary>
+    /// Create a deep-merged MergeProp with an asynchronous factory.
+    /// </summary>
+    /// <param name="callback">The asynchronous factory that produces the value to deep merge.</param>
+    MergeProp DeepMerge(Func<Task<object?>> callback);
+
+    /// <summary>
     /// Set whether to encrypt history state on the client side.
     /// </summary>
     void EncryptHistory(bool encrypt = true);
