@@ -28,6 +28,11 @@ public class Response : IActionResult, IResult
     private Page? _page;
     private IDictionary<string, object>? _viewData;
 
+    private readonly List<string> _mergeProps = new();
+    private readonly List<string> _prependProps = new();
+    private readonly List<string> _deepMergeProps = new();
+    private readonly List<string> _matchPropsOn = new();
+
     internal Response(
         string component,
         Dictionary<string, object?> props,
@@ -118,6 +123,10 @@ public class Response : IActionResult, IResult
             Props = props,
             EncryptHistory = _encryptHistory,
             ClearHistory = _clearHistory,
+            MergeProps = _mergeProps.Count > 0 ? _mergeProps : null,
+            PrependProps = _prependProps.Count > 0 ? _prependProps : null,
+            DeepMergeProps = _deepMergeProps.Count > 0 ? _deepMergeProps : null,
+            MatchPropsOn = _matchPropsOn.Count > 0 ? _matchPropsOn : null,
         };
 
         page.Props["errors"] = GetErrors();
@@ -132,10 +141,17 @@ public class Response : IActionResult, IResult
     {
         var props = _props;
 
+        _mergeProps.Clear();
+        _prependProps.Clear();
+        _deepMergeProps.Clear();
+        _matchPropsOn.Clear();
+
         props = ResolveSharedProps(props);
         props = ResolveFlashProps(props);
-        props = ResolvePartialProperties(props);
+        props = ApplyPartialFilter(props);
         props = ResolveAlways(props);
+        CollectMergeMetadata(props);
+        props = ExcludeFirstLoadProps(props);
         props = await ResolvePropertyInstances(props);
 
         return props;
@@ -185,16 +201,13 @@ public class Response : IActionResult, IResult
     }
 
     /// <summary>
-    /// Resolve the `only` and `except` partial request props.
+    /// Applies the `only` and `except` partial request filters. Full visits are
+    /// returned unchanged.
     /// </summary>
-    private Dictionary<string, object?> ResolvePartialProperties(Dictionary<string, object?> props)
+    private Dictionary<string, object?> ApplyPartialFilter(Dictionary<string, object?> props)
     {
-        var isPartial = _context!.IsInertiaPartialComponent(_component);
-
-        if (!isPartial)
-            return props
-                .Where(kv => kv.Value is not LazyProp and not DeferredProp)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+        if (!_context!.IsInertiaPartialComponent(_component))
+            return props;
 
         props = props.ToDictionary(kv => kv.Key, kv => kv.Value);
 
@@ -205,6 +218,82 @@ public class Response : IActionResult, IResult
             props = ResolveExcept(props);
 
         return props;
+    }
+
+    /// <summary>
+    /// Removes lazy and deferred props from the initial (non-partial) response.
+    /// This runs after merge metadata has been collected so that props resolved on a
+    /// later request still carry their merge labels on the initial visit.
+    /// </summary>
+    private Dictionary<string, object?> ExcludeFirstLoadProps(Dictionary<string, object?> props)
+    {
+        if (_context!.IsInertiaPartialComponent(_component))
+            return props;
+
+        return props
+            .Where(kv => kv.Value is not LazyProp and not DeferredProp)
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+    }
+
+    /// <summary>
+    /// Collects the merge metadata (<c>mergeProps</c>, <c>prependProps</c>,
+    /// <c>deepMergeProps</c> and <c>matchPropsOn</c>) for the props that survived
+    /// partial filtering. Props listed in <c>X-Inertia-Reset</c> are skipped so the
+    /// client replaces instead of merges them.
+    /// See: https://inertiajs.com/merging-props
+    /// </summary>
+    private void CollectMergeMetadata(Dictionary<string, object?> props)
+    {
+        var resetProps = ParseResetProps();
+
+        foreach (var (key, value) in props)
+        {
+            if (value is not IMergeable mergeable || !mergeable.ShouldMerge)
+                continue;
+
+            var path = key.ToCamelCase();
+
+            if (resetProps.Contains(path))
+                continue;
+
+            if (mergeable.ShouldDeepMerge)
+            {
+                _deepMergeProps.Add(path);
+            }
+            else if (mergeable.AppendsAtRoot)
+            {
+                _mergeProps.Add(path);
+            }
+            else if (mergeable.PrependsAtRoot)
+            {
+                _prependProps.Add(path);
+            }
+            else
+            {
+                foreach (var appendPath in mergeable.AppendsAtPaths)
+                    _mergeProps.Add($"{path}.{appendPath.ToCamelCasePath()}");
+
+                foreach (var prependPath in mergeable.PrependsAtPaths)
+                    _prependProps.Add($"{path}.{prependPath.ToCamelCasePath()}");
+            }
+
+            foreach (var strategy in mergeable.MatchesOn)
+                _matchPropsOn.Add($"{path}.{strategy.ToCamelCasePath()}");
+        }
+    }
+
+    /// <summary>
+    /// Parses the comma-separated <c>X-Inertia-Reset</c> header into camelCased prop paths.
+    /// </summary>
+    private HashSet<string> ParseResetProps()
+    {
+        var header = _context!.HttpContext.Request.Headers[InertiaHeader.Reset].ToString();
+
+        return header
+            .Split(',')
+            .Select(k => k.Trim().ToCamelCase())
+            .Where(k => !string.IsNullOrEmpty(k))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>

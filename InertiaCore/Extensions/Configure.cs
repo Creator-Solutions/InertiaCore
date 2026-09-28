@@ -1,6 +1,7 @@
 using System.Net;
 using InertiaCore.Contracts;
 using InertiaCore.Filters;
+using InertiaCore.Middleware;
 using InertiaCore.Models;
 using InertiaCore.Resolvers;
 using InertiaCore.Services;
@@ -19,39 +20,45 @@ namespace InertiaCore.Extensions;
 
 public static class Configure
 {
-#pragma warning disable CS0618 // Internal usage of the deprecated static facade is intentional
     public static IApplicationBuilder UseInertia(this IApplicationBuilder app)
     {
-        // IResponseFactory is scoped (shares InertiaState with the per-request IInertia).
-        // We create a scope here to resolve it without triggering the "scoped from root"
-        // validation. The scope lives for the app lifetime since the factory is held
-        // by the static Inertia facade.
-        var startupScope = app.ApplicationServices.CreateScope();
-        var factory = startupScope.ServiceProvider.GetRequiredService<IResponseFactory>();
+        // The static facade resolves IResponseFactory/IInertia from the current
+        // request scope. We only capture the accessor here, never a scoped service.
         var contextAccessor = app.ApplicationServices.GetRequiredService<IHttpContextAccessor>();
-        Inertia.UseFactory(factory, contextAccessor);
+        Inertia.UseContextAccessor(contextAccessor);
 
         var viteBuilder = app.ApplicationServices.GetService<IViteBuilder>();
         if (viteBuilder != null)
         {
             Vite.UseBuilder(viteBuilder);
-            Inertia.Version(Vite.GetManifestHash);
+
+            // Only fall back to the Vite manifest hash when the application has not
+            // configured its own version or version resolver.
+            var options = app.ApplicationServices.GetRequiredService<IOptions<InertiaOptions>>().Value;
+            if (options.VersionResolver == null && string.IsNullOrEmpty(options.Version))
+            {
+                options.VersionResolver = _ => Vite.GetManifestHash() ?? "";
+            }
         }
 
+        // Version-mismatch short-circuit (runs before the response-shaping middleware).
         app.Use(async (context, next) =>
         {
             var resolver = context.RequestServices.GetRequiredService<IInertiaVersionResolver>();
             var serverVersion = resolver.GetVersion();
-            
+
             if (!string.IsNullOrEmpty(serverVersion)
                 && context.IsInertiaRequest()
                 && context.Request.Headers[InertiaHeader.Version] != serverVersion)
             {
-                await OnVersionChange(context, app);
+                await OnVersionChange(context);
                 return;
             }
             await next();
         });
+
+        // Response-shaping middleware: empty-response redirects, X-Inertia headers, error bag.
+        app.UseMiddleware<InertiaMiddleware>();
 
         return app;
     }
@@ -74,11 +81,10 @@ public static class Configure
             {
                 return new DelegateInertiaVersionProvider(() => opt.VersionResolver(sp));
             }
-            if (opt.Version != null)
-            {
-                return new DefaultInertiaVersionProvider(opt.Version);
-            }
-            throw new InvalidOperationException("Inertia version or version resolver must be configured in InertiaOptions.");
+
+            // An unset version is valid: the protocol treats an empty version as
+            // "this server does not track asset versions".
+            return new DefaultInertiaVersionProvider(opt.Version ?? "");
         });
 
         services.AddScoped<IInertiaVersionResolver>(sp =>
@@ -92,7 +98,8 @@ public static class Configure
         // and response body without requiring middleware wiring or static facade calls.
         services.AddScoped<InertiaState>(sp =>
         {
-            var version = sp.GetRequiredService<IOptions<InertiaOptions>>().Value.Version;
+            var opt = sp.GetRequiredService<IOptions<InertiaOptions>>().Value;
+            var version = opt.VersionResolver?.Invoke(sp) ?? opt.Version;
             return new InertiaState { Version = version };
         });
 
@@ -126,12 +133,15 @@ public static class Configure
         return services;
     }
 
-    private static async Task OnVersionChange(HttpContext context, IApplicationBuilder app)
+    private static async Task OnVersionChange(HttpContext context)
     {
-        var tempData = context.RequestServices.GetRequiredService<ITempDataDictionaryFactory>()
-            .GetTempData(context);
-
-        if (tempData.Any()) tempData.Keep();
+        // TempData is MVC-only; Minimal API hosts do not register it.
+        var tempDataFactory = context.RequestServices.GetService<ITempDataDictionaryFactory>();
+        if (tempDataFactory != null)
+        {
+            var tempData = tempDataFactory.GetTempData(context);
+            if (tempData.Any()) tempData.Keep();
+        }
 
         context.Response.Headers.Override(InertiaHeader.Location, context.RequestedUri());
         context.Response.StatusCode = (int)HttpStatusCode.Conflict;
@@ -139,4 +149,3 @@ public static class Configure
         await context.Response.CompleteAsync();
     }
 }
-#pragma warning restore CS0618

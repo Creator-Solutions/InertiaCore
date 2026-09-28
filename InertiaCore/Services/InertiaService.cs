@@ -80,6 +80,24 @@ public sealed class InertiaService : IInertia
     public DeferredProp Defer(Func<Task<object?>> factory) => new(factory);
 
     /// <inheritdoc />
+    public MergeProp Merge(object? value) => _factory.Merge(value);
+
+    /// <inheritdoc />
+    public MergeProp Merge(Func<object?> callback) => _factory.Merge(callback);
+
+    /// <inheritdoc />
+    public MergeProp Merge(Func<Task<object?>> callback) => _factory.Merge(callback);
+
+    /// <inheritdoc />
+    public MergeProp DeepMerge(object? value) => _factory.DeepMerge(value);
+
+    /// <inheritdoc />
+    public MergeProp DeepMerge(Func<object?> callback) => _factory.DeepMerge(callback);
+
+    /// <inheritdoc />
+    public MergeProp DeepMerge(Func<Task<object?>> callback) => _factory.DeepMerge(callback);
+
+    /// <inheritdoc />
     public void EncryptHistory(bool encrypt = true) => _factory.EncryptHistory(encrypt);
 
     /// <inheritdoc />

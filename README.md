@@ -114,28 +114,35 @@ Example:
 
 ## Shared Data
 
-Share data globally across all Inertia responses.
+Share data across Inertia responses.
 
-Example:
+When called **during a request** (for example inside a controller), `Inertia.Share`
+is scoped to that request and is never visible to other requests or users:
 
 ```csharp
-Inertia.Share("auth", new
+public IActionResult Index()
 {
-    UserId = userId
-});
+    Inertia.Share("auth", new { UserId = userId });
+    return Inertia.Render("Dashboard");
+}
 ```
 
-or:
+When called **outside a request** (for example during application startup), the
+value is registered globally and merged into every response:
 
 ```csharp
+// Program.cs
+Inertia.Share("appName", "My App");
+
 Inertia.Share(new Dictionary<string, object?>
 {
-    ["auth"] = new
-    {
-        UserId = userId
-    }
+    ["auth"] = new { UserId = userId }
 });
 ```
+
+The merge order is **global → request-scoped → component props**, so component
+props always win. When injecting `IInertia` via DI, `Share` is always
+request-scoped.
 
 ---
 
@@ -157,6 +164,54 @@ public IActionResult Index()
     });
 }
 ```
+
+---
+
+## Merging Props
+
+Merge props tell the client to combine incoming data with the existing page data
+during partial reloads instead of replacing it — useful for "load more" pagination.
+A full visit always replaces the prop.
+
+```csharp
+public IActionResult Index(int page = 1)
+{
+    var tags = _allTags.Skip((page - 1) * 5).Take(5);
+
+    return Inertia.Render("Tags/Index", new
+    {
+        Tags = Inertia.Merge(tags)
+    });
+}
+```
+
+Append at the root (the default), prepend, deep merge, or target a nested path:
+
+```csharp
+Inertia.Merge(items);                        // append at the root
+Inertia.Merge(items).Prepend();              // prepend at the root
+Inertia.Merge(paginator).Append("data");     // merge only the "data" array
+Inertia.DeepMerge(chat);                     // deep merge the whole structure
+Inertia.Merge(posts).MatchOn("id");          // update items matched by id
+Inertia.DeepMerge(chat).MatchOn("messages.id");
+```
+
+Merge props compose with the other prop wrappers, so a prop can be deferred and
+mergeable at the same time:
+
+```csharp
+public IActionResult Index()
+{
+    return await _inertia.Render("Users/Index", new
+    {
+        Results = _inertia.Defer(() => LoadUsers()).Merge()
+    });
+}
+```
+
+To have the client replace a prop before merging new data, send its key in the
+`X-Inertia-Reset` header (for example `X-Inertia-Reset: results`). Reset props are
+still returned in `props`, but omitted from every merge array.
 
 ---
 
@@ -218,6 +273,10 @@ Built-in providers:
 - Delegate-based version provider
 - Custom provider implementations
 
+The version defaults to an empty string, which is a valid Inertia protocol value
+meaning "this server does not track asset versions". `AddInertia()` therefore
+works out of the box without configuring a version.
+
 Example:
 
 ```csharp
@@ -255,17 +314,51 @@ Empty responses from Inertia requests are automatically converted into redirects
 Handled scenarios:
 
 ```csharp
-return Ok();
+return NoContent(); // 204
 ```
 
 ```csharp
-return NoContent();
+Response.ContentLength = 0; // 200 with no body
 ```
 
 The adapter redirects users back to the previous page using:
 
-1. The `Referer` header
+1. The `Referer` header, but only when it is a safe relative path or points at the
+   current scheme, host and port
 2. Current request URL fallback
+
+A `200` response with no content type is treated as empty when its content length
+is `null` or `0`.
+
+---
+
+## Page Registry & Validation
+
+Declare your page components so the adapter can validate them and tooling can
+reference them as strongly-typed constants:
+
+```csharp
+[assembly: InertiaPage("Dashboard")]
+[assembly: InertiaPage("Users/Edit")]
+```
+
+or on a class:
+
+```csharp
+[InertiaPage("Account/Settings")]
+public class AccountController { }
+```
+
+The source generator emits an `InertiaCore.Generated.InertiaPages` class with a
+constant per page and registers each component with `InertiaPageRegistry` at
+startup. Enable runtime validation to fail fast on unknown components:
+
+```csharp
+builder.Services.AddInertia(options =>
+{
+    options.ValidatePages = true;
+});
+```
 
 ---
 

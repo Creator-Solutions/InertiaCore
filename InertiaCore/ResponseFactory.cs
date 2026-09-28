@@ -36,6 +36,24 @@ public interface IResponseFactory
     AlwaysProp Always(Func<Task<object?>> callback);
     LazyProp Lazy(Func<object?> callback);
     LazyProp Lazy(Func<Task<object?>> callback);
+
+    /// <summary>Creates a merge prop from a value.</summary>
+    MergeProp Merge(object? value);
+
+    /// <summary>Creates a merge prop from a synchronous factory.</summary>
+    MergeProp Merge(Func<object?> callback);
+
+    /// <summary>Creates a merge prop from an asynchronous factory.</summary>
+    MergeProp Merge(Func<Task<object?>> callback);
+
+    /// <summary>Creates a deep-merge prop from a value.</summary>
+    MergeProp DeepMerge(object? value);
+
+    /// <summary>Creates a deep-merge prop from a synchronous factory.</summary>
+    MergeProp DeepMerge(Func<object?> callback);
+
+    /// <summary>Creates a deep-merge prop from an asynchronous factory.</summary>
+    MergeProp DeepMerge(Func<Task<object?>> callback);
 }
 
 internal class ResponseFactory : IResponseFactory
@@ -54,7 +72,7 @@ internal class ResponseFactory : IResponseFactory
         IGateway gateway,
         IOptions<InertiaOptions> options,
         InertiaState state,
-        IOptions<JsonOptions> jsonOptions)
+        IOptions<JsonOptions>? jsonOptions = null)
     {
         _contextAccessor = contextAccessor ?? throw new ArgumentNullException(nameof(contextAccessor));
         _gateway = gateway ?? throw new ArgumentNullException(nameof(gateway));
@@ -73,6 +91,13 @@ internal class ResponseFactory : IResponseFactory
 
     public Response Render(string component, object? props = null)
     {
+        if (_options.Value.ValidatePages && !InertiaPageRegistry.IsRegistered(component))
+        {
+            throw new InvalidOperationException(
+                $"Unknown Inertia page component '{component}'. " +
+                "Declare it with [assembly: InertiaPage(\"...\")] or disable InertiaOptions.ValidatePages.");
+        }
+
         props ??= new { };
         var dictProps = props switch
         {
@@ -172,6 +197,12 @@ internal class ResponseFactory : IResponseFactory
     public AlwaysProp Always(object? value) => new(value);
     public AlwaysProp Always(Func<object?> callback) => new(callback);
     public AlwaysProp Always(Func<Task<object?>> callback) => new(callback);
+    public MergeProp Merge(object? value) => new(value);
+    public MergeProp Merge(Func<object?> callback) => new(callback);
+    public MergeProp Merge(Func<Task<object?>> callback) => new(callback);
+    public MergeProp DeepMerge(object? value) => (MergeProp)new MergeProp(value).DeepMerge();
+    public MergeProp DeepMerge(Func<object?> callback) => (MergeProp)new MergeProp(callback).DeepMerge();
+    public MergeProp DeepMerge(Func<Task<object?>> callback) => (MergeProp)new MergeProp(callback).DeepMerge();
 
     /// <summary>
     /// Converts an arbitrary props object to a dictionary.

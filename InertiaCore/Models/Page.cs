@@ -9,6 +9,18 @@ internal class Page
     public string? Version { get; set; }
     public string Url { get; set; } = default!;
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? MergeProps { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? PrependProps { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? DeepMergeProps { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? MatchPropsOn { get; set; }
+
     [JsonIgnore]
     public bool EncryptHistory { get; set; }
 
