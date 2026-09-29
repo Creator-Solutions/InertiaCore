@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace InertiaCore;
 
@@ -33,6 +35,9 @@ public class Response : IActionResult, IResult
     private readonly List<string> _deepMergeProps = new();
     private readonly List<string> _matchPropsOn = new();
     private readonly Dictionary<string, ScrollPropEntry> _scrollProps = new();
+    private readonly Dictionary<string, List<string>> _deferredProps = new();
+    private readonly Dictionary<string, OncePropEntry> _onceProps = new();
+    private readonly List<string> _rescuedProps = new();
 
     internal Response(
         string component,
@@ -129,6 +134,9 @@ public class Response : IActionResult, IResult
             DeepMergeProps = _deepMergeProps.Count > 0 ? _deepMergeProps : null,
             MatchPropsOn = _matchPropsOn.Count > 0 ? _matchPropsOn : null,
             ScrollProps = _scrollProps.Count > 0 ? _scrollProps : null,
+            DeferredProps = _deferredProps.Count > 0 ? _deferredProps : null,
+            OnceProps = _onceProps.Count > 0 ? _onceProps : null,
+            RescuedProps = _rescuedProps.Count > 0 ? _rescuedProps : null,
         };
 
         page.Props["errors"] = GetErrors();
@@ -148,16 +156,26 @@ public class Response : IActionResult, IResult
         _deepMergeProps.Clear();
         _matchPropsOn.Clear();
         _scrollProps.Clear();
+        _deferredProps.Clear();
+        _onceProps.Clear();
+        _rescuedProps.Clear();
 
         props = ResolveSharedProps(props);
         props = ResolveFlashProps(props);
         props = ApplyPartialFilter(props);
         props = ResolveAlways(props);
-        CollectMergeMetadata(props);
-        props = ExcludeFirstLoadProps(props);
-        props = await ResolvePropertyInstances(props);
 
-        return props;
+        var isPartial = _context!.IsInertiaPartialComponent(_component);
+
+        CollectMergeMetadata(props);
+        CollectDeferredMetadata(props, isPartial);
+        CollectOnceMetadata(props);
+
+        props = ExcludeFirstLoadProps(props, isPartial);
+        var (resolved, rescued) = await ResolvePropertyInstances(props);
+        _rescuedProps.AddRange(rescued);
+
+        return resolved;
     }
 
     /// <summary>
@@ -224,17 +242,32 @@ public class Response : IActionResult, IResult
     }
 
     /// <summary>
-    /// Removes lazy and deferred props from the initial (non-partial) response.
-    /// This runs after merge metadata has been collected so that props resolved on a
-    /// later request still carry their merge labels on the initial visit.
+    /// Removes props that must not be resolved on the initial (non-partial) response:
+    /// lazy and deferred props, and once props the client already holds. This runs after
+    /// metadata has been collected so those props are still announced to the client.
     /// </summary>
-    private Dictionary<string, object?> ExcludeFirstLoadProps(Dictionary<string, object?> props)
+    private Dictionary<string, object?> ExcludeFirstLoadProps(Dictionary<string, object?> props, bool isPartial)
     {
-        if (_context!.IsInertiaPartialComponent(_component))
+        if (isPartial)
             return props;
 
+        var exceptOnce = ParseExceptOnceProps();
+
         return props
-            .Where(kv => kv.Value is not LazyProp and not DeferredProp)
+            .Where(kv =>
+            {
+                if (kv.Value is LazyProp or DeferredProp)
+                    return false;
+
+                if (kv.Value is IOnceable { ShouldResolveOnce: true } once
+                    && !once.ForceRefresh
+                    && exceptOnce.Contains(once.Key ?? kv.Key.ToCamelCase()))
+                {
+                    return false;
+                }
+
+                return true;
+            })
             .ToDictionary(kv => kv.Key, kv => kv.Value);
     }
 
@@ -310,6 +343,68 @@ public class Response : IActionResult, IResult
             StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Collects the <c>deferredProps</c> metadata, grouping deferred props by their
+    /// group. Deferred metadata is only emitted on full visits; partial reloads resolve
+    /// the requested props directly.
+    /// See: https://inertiajs.com/deferred-props
+    /// </summary>
+    private void CollectDeferredMetadata(Dictionary<string, object?> props, bool isPartial)
+    {
+        if (isPartial)
+            return;
+
+        foreach (var (key, value) in props)
+        {
+            if (value is not DeferredProp deferred)
+                continue;
+
+            var path = key.ToCamelCase();
+
+            if (!_deferredProps.TryGetValue(deferred.Group, out var group))
+            {
+                group = new List<string>();
+                _deferredProps[deferred.Group] = group;
+            }
+
+            group.Add(path);
+        }
+    }
+
+    /// <summary>
+    /// Collects the <c>onceProps</c> metadata for once props that survived partial
+    /// filtering, keyed by the once key (which defaults to the prop path).
+    /// See: https://inertiajs.com/once-props
+    /// </summary>
+    private void CollectOnceMetadata(Dictionary<string, object?> props)
+    {
+        foreach (var (key, value) in props)
+        {
+            if (value is not IOnceable { ShouldResolveOnce: true } once)
+                continue;
+
+            var path = key.ToCamelCase();
+            var onceKey = once.Key ?? path;
+
+            _onceProps[onceKey] = new OncePropEntry(path, once.ExpiresAt);
+        }
+    }
+
+    /// <summary>
+    /// Parses the comma-separated <c>X-Inertia-Except-Once-Props</c> header into the set
+    /// of once keys the client already holds.
+    /// </summary>
+    private HashSet<string> ParseExceptOnceProps()
+    {
+        var header = _context!.HttpContext.Request.Headers[InertiaHeader.ExceptOnceProps].ToString();
+
+        return header
+            .Split(',')
+            .Select(k => k.Trim())
+            .Where(k => !string.IsNullOrEmpty(k))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>
     /// Parses the comma-separated <c>X-Inertia-Reset</c> header into camelCased prop paths.
     /// </summary>
     private HashSet<string> ParseResetProps()
@@ -367,29 +462,67 @@ public class Response : IActionResult, IResult
     }
 
     /// <summary>
-    /// Resolve all necessary class instances in the given props.
+    /// Resolves all prop values. Rescuable props that throw are logged and omitted, with
+    /// their keys returned so the caller can report them through <c>rescuedProps</c>.
+    /// Exceptions from non-rescuable props propagate and fail the request.
     /// </summary>
-    private static async Task<Dictionary<string, object?>> ResolvePropertyInstances(Dictionary<string, object?> props)
+    private async Task<(Dictionary<string, object?> Props, List<string> Rescued)> ResolvePropertyInstances(
+        Dictionary<string, object?> props)
     {
-        return (await Task.WhenAll(props.Select(async pair =>
+        var results = await Task.WhenAll(props.Select(async pair =>
         {
             var key = pair.Key.ToCamelCase();
 
-            var value = pair.Value switch
+            try
             {
-                Func<object?> f => (key, await f.ResolveAsync()),
-                Task t => (key, await t.ResolveResult()),
-                InvokableProp p => (key, await p.Invoke()),
-                _ => (key, pair.Value)
-            };
+                object? value = pair.Value switch
+                {
+                    Func<object?> f => await f.ResolveAsync(),
+                    Task t => await t.ResolveResult(),
+                    InvokableProp p => await p.Invoke(),
+                    _ => pair.Value
+                };
 
-            if (value.Item2 is Dictionary<string, object?> dict)
+                var nestedRescued = new List<string>();
+                if (value is Dictionary<string, object?> dict)
+                {
+                    (value, nestedRescued) = await ResolvePropertyInstances(dict);
+                }
+
+                return (Key: key, Value: value, Rescued: nestedRescued, Failed: false);
+            }
+            catch (Exception ex) when (pair.Value is IRescuable { ShouldRescue: true })
             {
-                value = (key, await ResolvePropertyInstances(dict));
+                LogRescuedProp(key, ex);
+                return (Key: key, Value: (object?)null, Rescued: new List<string>(), Failed: true);
+            }
+        }));
+
+        var rescuedKeys = new List<string>();
+        var resolved = new Dictionary<string, object?>();
+
+        foreach (var result in results)
+        {
+            if (result.Failed)
+            {
+                rescuedKeys.Add(result.Key);
+                continue;
             }
 
-            return value;
-        }))).ToDictionary(pair => pair.key, pair => pair.Item2);
+            rescuedKeys.AddRange(result.Rescued);
+            resolved[result.Key] = result.Value;
+        }
+
+        return (resolved, rescuedKeys);
+    }
+
+    /// <summary>
+    /// Logs a rescued prop failure through the request's logger, when one is available.
+    /// </summary>
+    private void LogRescuedProp(string key, Exception exception)
+    {
+        var logger = _context?.HttpContext?.RequestServices?.GetService(typeof(ILogger<Response>)) as ILogger<Response>;
+        logger?.LogError(exception, "Rescued Inertia prop '{Prop}' after it failed to resolve.", key);
     }
 
     protected internal JsonResult GetJson()

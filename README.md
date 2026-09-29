@@ -253,6 +253,67 @@ public IActionResult Index(int page = 1)
 
 ---
 
+## Deferred Props
+
+Deferred props are excluded from the initial response and fetched afterwards. The
+page object announces them under `deferredProps`, grouped so the client can fetch
+groups in parallel.
+
+```csharp
+return Inertia.Render("Users/Index", new
+{
+    Users = _db.Users.ToList(),
+    Permissions = Inertia.Defer(() => LoadPermissions()),
+    Teams = Inertia.Defer(() => LoadTeams(), "attributes"),
+    Projects = Inertia.Defer(() => LoadProjects(), "attributes")
+});
+```
+
+The response contains `deferredProps: { "default": ["permissions"], "attributes":
+["teams", "projects"] }` and omits the values. The client requests each group with
+a partial reload (`only`), and the callbacks are only invoked when requested.
+
+---
+
+## Once Props
+
+Once props are resolved a single time and remembered by the client, then reused on
+subsequent pages that include them.
+
+```csharp
+return Inertia.Render("Billing", new
+{
+    Plans = Inertia.Once(() => Plan.All()).Until(TimeSpan.FromHours(1))
+});
+```
+
+The page object emits `onceProps` (`{ "plans": { "prop": "plans", "expiresAt": ... } }`).
+On later visits the client lists the once keys it already holds in the
+`X-Inertia-Except-Once-Props` header, and the callback is skipped and the prop
+omitted. A partial reload always resolves a requested once prop. Use `.As("key")`
+to share data under a different name and `.Fresh()` to force a refresh.
+
+---
+
+## Rescuing Deferred Props
+
+A deferred prop can be resolved with rescue enabled, so a failure is logged, the
+value omitted, and the key reported through `rescuedProps` instead of failing the
+whole request.
+
+```csharp
+return Inertia.Render("Users/Index", new
+{
+    Permissions = Inertia.Defer(() => LoadPermissions(), "default", rescue: true)
+    // or: Inertia.Defer(() => LoadPermissions()).Rescue()
+});
+```
+
+A response with `rescuedProps: ["permissions"]` and a `200` status lets the client
+render an error state. Exceptions from props without rescue still fail the request.
+
+---
+
 ## Server-Side Rendering
 
 Built-in support for Inertia SSR.

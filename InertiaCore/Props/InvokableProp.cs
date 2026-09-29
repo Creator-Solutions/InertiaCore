@@ -4,18 +4,21 @@ namespace InertiaCore.Props;
 
 /// <summary>
 /// Base type for lazily-evaluated Inertia props such as <see cref="LazyProp"/>,
-/// <see cref="AlwaysProp"/>, <see cref="DeferredProp"/> and <see cref="MergeProp"/>.
+/// <see cref="AlwaysProp"/>, <see cref="DeferredProp"/>, <see cref="MergeProp"/> and
+/// <see cref="OnceProp"/>.
 /// <para>
 /// Merge behaviour can be composed onto any prop using the fluent
 /// <see cref="Merge"/>, <see cref="DeepMerge"/>, <see cref="Prepend()"/>,
-/// <see cref="Append(string[])"/> and <see cref="MatchOn(string[])"/> methods.
-/// See: https://inertiajs.com/merging-props
+/// <see cref="Append(string[])"/> and <see cref="MatchOn(string[])"/> methods, and
+/// once behaviour using <see cref="Once"/>, <see cref="As"/>, <see cref="Fresh"/> and
+/// <see cref="Until(TimeSpan)"/>.
 /// </para>
 /// </summary>
-public class InvokableProp : IMergeable
+public class InvokableProp : IMergeable, IOnceable
 {
     private readonly object? _value;
     private readonly MergeState _merge = new();
+    private readonly OnceState _once = new();
 
     protected InvokableProp(object? value) => _value = value;
 
@@ -105,6 +108,64 @@ public class InvokableProp : IMergeable
         return this;
     }
 
+    /// <summary>
+    /// Marks the prop to be resolved once and remembered by the client, so it is
+    /// skipped on subsequent visits where the client already holds it.
+    /// See: https://inertiajs.com/once-props
+    /// </summary>
+    /// <param name="value">Whether the prop should resolve once. Defaults to <see langword="true"/>.</param>
+    /// <returns>The same prop, for chaining.</returns>
+    public InvokableProp Once(bool value = true)
+    {
+        _once.Once = value;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets a custom key used to identify the once prop across pages, so the same data
+    /// can be shared under different prop names.
+    /// </summary>
+    /// <param name="key">The once key.</param>
+    /// <returns>The same prop, for chaining.</returns>
+    public InvokableProp As(string key)
+    {
+        _once.Key = key;
+        return this;
+    }
+
+    /// <summary>
+    /// Forces the once prop to be sent to the client even if the client already holds it.
+    /// </summary>
+    /// <param name="value">Whether to force a refresh. Defaults to <see langword="true"/>.</param>
+    /// <returns>The same prop, for chaining.</returns>
+    public InvokableProp Fresh(bool value = true)
+    {
+        _once.Fresh = value;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets an expiration for the once prop, after which the client refreshes it.
+    /// </summary>
+    /// <param name="ttl">The time-to-live relative to now.</param>
+    /// <returns>The same prop, for chaining.</returns>
+    public InvokableProp Until(TimeSpan ttl)
+    {
+        _once.ExpiresAt = DateTimeOffset.UtcNow.Add(ttl).ToUnixTimeMilliseconds();
+        return this;
+    }
+
+    /// <summary>
+    /// Sets an absolute expiration for the once prop, after which the client refreshes it.
+    /// </summary>
+    /// <param name="until">The absolute expiration instant.</param>
+    /// <returns>The same prop, for chaining.</returns>
+    public InvokableProp Until(DateTimeOffset until)
+    {
+        _once.ExpiresAt = until.ToUnixTimeMilliseconds();
+        return this;
+    }
+
     bool IMergeable.ShouldMerge => _merge.Merge;
 
     bool IMergeable.ShouldDeepMerge => _merge.DeepMerge;
@@ -118,6 +179,14 @@ public class InvokableProp : IMergeable
     IReadOnlyList<string> IMergeable.PrependsAtPaths => _merge.PrependsAtPaths;
 
     IReadOnlyList<string> IMergeable.MatchesOn => _merge.MatchOn;
+
+    bool IOnceable.ShouldResolveOnce => _once.Once;
+
+    string? IOnceable.Key => _once.Key;
+
+    long? IOnceable.ExpiresAt => _once.ExpiresAt;
+
+    bool IOnceable.ForceRefresh => _once.Fresh;
 
     /// <summary>
     /// Clears any nested append/prepend paths so a caller (such as <see cref="ScrollProp"/>)

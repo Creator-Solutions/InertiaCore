@@ -77,7 +77,25 @@ public sealed class InertiaService : IInertia
     public DeferredProp Defer(Func<object?> factory) => new(factory);
 
     /// <inheritdoc />
+    public DeferredProp Defer(Func<object?> factory, string group) => new(factory, group);
+
+    /// <inheritdoc />
+    public DeferredProp Defer(Func<object?> factory, string group, bool rescue) => new(factory, group, rescue);
+
+    /// <inheritdoc />
     public DeferredProp Defer(Func<Task<object?>> factory) => new(factory);
+
+    /// <inheritdoc />
+    public DeferredProp Defer(Func<Task<object?>> factory, string group) => new(factory, group);
+
+    /// <inheritdoc />
+    public DeferredProp Defer(Func<Task<object?>> factory, string group, bool rescue) => new(factory, group, rescue);
+
+    /// <inheritdoc />
+    public OnceProp Once(Func<object?> callback) => _factory.Once(callback);
+
+    /// <inheritdoc />
+    public OnceProp Once(Func<Task<object?>> callback) => _factory.Once(callback);
 
     /// <inheritdoc />
     public MergeProp Merge(object? value) => _factory.Merge(value);

@@ -1,9 +1,9 @@
 # Changelog
 
-## v0.3.0 — Merging Props (IN-49)
+## v0.3.0 — Merge, Scroll, Deferred, Once & Rescued Props (IN-49 – IN-51)
 
-Adds support for Inertia's prop-merging protocol, the foundation for infinite
-scroll and pagination packages. No breaking changes.
+Adds support for Inertia's prop-merging, infinite-scroll, deferred, once and
+rescued prop protocols. No breaking changes.
 
 ### Added
 
@@ -27,6 +27,17 @@ scroll and pagination packages. No breaking changes.
   inner array (`data` by default) is labelled for append or prepend merge based on the
   `X-Inertia-Infinite-Scroll-Merge-Intent` request header. `X-Inertia-Reset` sets the
   entry's `reset` flag. Null tokens are serialized as `null`.
+- `Defer(callback, group)` / `Defer(callback, group, rescue)` group deferred props and
+  announce them under `deferredProps`, so the client fetches groups in parallel. Callbacks
+  are never invoked for props that are excluded by a partial reload.
+- `Inertia.Once(callback)` / `inertia.Once(...)` resolve a prop a single time and emit
+  `onceProps` metadata (`prop` + `expiresAt`). Requests that already hold a once prop
+  (listed in `X-Inertia-Except-Once-Props`) skip resolution. Fluent `.Once()`, `.As(key)`,
+  `.Fresh()` and `.Until(...)` compose with merge, deferred and lazy props.
+- `DeferredProp.Rescue()` (and the `rescue` argument to `Defer`) rescues resolution
+  failures: the exception is logged, the value omitted, and the key reported through the
+  page object's `rescuedProps` array while the response stays `200`. Non-rescued
+  exceptions still fail the request.
 
 ---
 

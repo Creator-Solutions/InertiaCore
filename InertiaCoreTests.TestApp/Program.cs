@@ -23,6 +23,27 @@ app.MapGet("/scroll", async (IInertia inertia) =>
             new ScrollMetadata("page", 1, 3, 2))
     }));
 
+app.MapGet("/deferred", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new
+    {
+        Permissions = inertia.Defer(() => (object?)"permissions"),
+        Teams = inertia.Defer(() => (object?)"teams", "attributes"),
+        Projects = inertia.Defer(() => (object?)"projects", "attributes")
+    }));
+
+app.MapGet("/once", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new
+    {
+        Plans = inertia.Once(() => (object?)new[] { 1, 2 })
+    }));
+
+app.MapGet("/rescue", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new
+    {
+        Permissions = inertia.Defer(() => throw new InvalidOperationException("boom"), "default", true),
+        Other = "ok"
+    }));
+
 app.Run();
 
 public partial class Program
