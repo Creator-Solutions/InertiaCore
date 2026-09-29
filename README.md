@@ -215,6 +215,44 @@ still returned in `props`, but omitted from every merge array.
 
 ---
 
+## Infinite Scroll
+
+`Inertia.Scroll` configures a paginated prop for Inertia's `<InfiniteScroll>`
+component. It emits the pagination cursor under `scrollProps` and marks the inner
+array (`data` by default) for merge, appending when loading forward and prepending
+when loading backward.
+
+```csharp
+public IActionResult Index(int page = 1)
+{
+    var users = _db.Users.OrderBy(u => u.Id).ToPagedList(page, 20);
+
+    return Inertia.Render("Users/Index", new
+    {
+        Users = Inertia.Scroll(
+            new { data = users.Items },
+            new ScrollMetadata(
+                PageName: "page",
+                PreviousPage: page > 1 ? page - 1 : null,
+                NextPage: users.HasMore ? page + 1 : null,
+                CurrentPage: page))
+    });
+}
+```
+
+- The prop value is emitted as-is; the array at `data` is merged (`mergeProps:
+  ["users.data"]`).
+- The direction comes from the client's `X-Inertia-Infinite-Scroll-Merge-Intent`
+  header (`prepend` or `append`).
+- Cursor tokens are nullable and may be numbers or strings; `null` is serialized as
+  `null`, never omitted.
+- `X-Inertia-Reset: users` marks `scrollProps.users.reset = true` and removes the
+  merge label so the client replaces instead of merging.
+- Pass a custom wrapper as the third argument when the array key is not `data`
+  (for example `Inertia.Scroll(paginator, metadata, "items")`).
+
+---
+
 ## Server-Side Rendering
 
 Built-in support for Inertia SSR.

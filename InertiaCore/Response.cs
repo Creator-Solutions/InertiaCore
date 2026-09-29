@@ -32,6 +32,7 @@ public class Response : IActionResult, IResult
     private readonly List<string> _prependProps = new();
     private readonly List<string> _deepMergeProps = new();
     private readonly List<string> _matchPropsOn = new();
+    private readonly Dictionary<string, ScrollPropEntry> _scrollProps = new();
 
     internal Response(
         string component,
@@ -127,6 +128,7 @@ public class Response : IActionResult, IResult
             PrependProps = _prependProps.Count > 0 ? _prependProps : null,
             DeepMergeProps = _deepMergeProps.Count > 0 ? _deepMergeProps : null,
             MatchPropsOn = _matchPropsOn.Count > 0 ? _matchPropsOn : null,
+            ScrollProps = _scrollProps.Count > 0 ? _scrollProps : null,
         };
 
         page.Props["errors"] = GetErrors();
@@ -145,6 +147,7 @@ public class Response : IActionResult, IResult
         _prependProps.Clear();
         _deepMergeProps.Clear();
         _matchPropsOn.Clear();
+        _scrollProps.Clear();
 
         props = ResolveSharedProps(props);
         props = ResolveFlashProps(props);
@@ -245,15 +248,28 @@ public class Response : IActionResult, IResult
     private void CollectMergeMetadata(Dictionary<string, object?> props)
     {
         var resetProps = ParseResetProps();
+        var prependIntent = IsPrependMergeIntent();
 
         foreach (var (key, value) in props)
         {
+            var path = key.ToCamelCase();
+            var isReset = resetProps.Contains(path);
+
+            if (value is ScrollProp scroll)
+            {
+                scroll.ConfigureMergeIntent(prependIntent);
+                _scrollProps[path] = new ScrollPropEntry(
+                    scroll.Metadata.PageName,
+                    scroll.Metadata.PreviousPage,
+                    scroll.Metadata.NextPage,
+                    scroll.Metadata.CurrentPage,
+                    isReset);
+            }
+
             if (value is not IMergeable mergeable || !mergeable.ShouldMerge)
                 continue;
 
-            var path = key.ToCamelCase();
-
-            if (resetProps.Contains(path))
+            if (isReset)
                 continue;
 
             if (mergeable.ShouldDeepMerge)
@@ -281,6 +297,17 @@ public class Response : IActionResult, IResult
                 _matchPropsOn.Add($"{path}.{strategy.ToCamelCasePath()}");
         }
     }
+
+    /// <summary>
+    /// Returns whether the client asked for the previous page to be prepended
+    /// (<c>X-Inertia-Infinite-Scroll-Merge-Intent: prepend</c>). Any other value,
+    /// including a missing header, means append.
+    /// </summary>
+    private bool IsPrependMergeIntent() =>
+        string.Equals(
+            _context!.HttpContext.Request.Headers[InertiaHeader.InfiniteScrollMergeIntent].ToString(),
+            "prepend",
+            StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Parses the comma-separated <c>X-Inertia-Reset</c> header into camelCased prop paths.

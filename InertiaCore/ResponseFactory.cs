@@ -54,6 +54,15 @@ public interface IResponseFactory
 
     /// <summary>Creates a deep-merge prop from an asynchronous factory.</summary>
     MergeProp DeepMerge(Func<Task<object?>> callback);
+
+    /// <summary>Creates an infinite-scroll prop from a paginated value.</summary>
+    ScrollProp Scroll(object? items, ScrollMetadata metadata, string wrapper = "data");
+
+    /// <summary>Creates an infinite-scroll prop from a synchronous factory.</summary>
+    ScrollProp Scroll(Func<object?> items, ScrollMetadata metadata, string wrapper = "data");
+
+    /// <summary>Creates an infinite-scroll prop from an asynchronous factory.</summary>
+    ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data");
 }
 
 internal class ResponseFactory : IResponseFactory
@@ -203,6 +212,9 @@ internal class ResponseFactory : IResponseFactory
     public MergeProp DeepMerge(object? value) => (MergeProp)new MergeProp(value).DeepMerge();
     public MergeProp DeepMerge(Func<object?> callback) => (MergeProp)new MergeProp(callback).DeepMerge();
     public MergeProp DeepMerge(Func<Task<object?>> callback) => (MergeProp)new MergeProp(callback).DeepMerge();
+    public ScrollProp Scroll(object? items, ScrollMetadata metadata, string wrapper = "data") => new(items, metadata, wrapper);
+    public ScrollProp Scroll(Func<object?> items, ScrollMetadata metadata, string wrapper = "data") => new(items, metadata, wrapper);
+    public ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data") => new(items, metadata, wrapper);
 
     /// <summary>
     /// Converts an arbitrary props object to a dictionary.

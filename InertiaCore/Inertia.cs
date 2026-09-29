@@ -155,4 +155,25 @@ public static class Inertia
     /// existing client-side value.
     /// </summary>
     public static MergeProp DeepMerge(Func<Task<object?>> callback) => GetFactory().DeepMerge(callback);
+
+    /// <summary>
+    /// Creates an infinite-scroll prop from a paginated value. The inner array is
+    /// appended or prepended during partial reloads based on the
+    /// <c>X-Inertia-Infinite-Scroll-Merge-Intent</c> request header, and the cursor
+    /// is emitted under <c>scrollProps</c>.
+    /// </summary>
+    public static ScrollProp Scroll(object? items, ScrollMetadata metadata, string wrapper = "data") =>
+        GetFactory().Scroll(items, metadata, wrapper);
+
+    /// <summary>
+    /// Creates an infinite-scroll prop from a synchronous factory.
+    /// </summary>
+    public static ScrollProp Scroll(Func<object?> items, ScrollMetadata metadata, string wrapper = "data") =>
+        GetFactory().Scroll(items, metadata, wrapper);
+
+    /// <summary>
+    /// Creates an infinite-scroll prop from an asynchronous factory.
+    /// </summary>
+    public static ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data") =>
+        GetFactory().Scroll(items, metadata, wrapper);
 }

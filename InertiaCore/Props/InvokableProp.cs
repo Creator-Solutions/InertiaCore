@@ -118,4 +118,14 @@ public class InvokableProp : IMergeable
     IReadOnlyList<string> IMergeable.PrependsAtPaths => _merge.PrependsAtPaths;
 
     IReadOnlyList<string> IMergeable.MatchesOn => _merge.MatchOn;
+
+    /// <summary>
+    /// Clears any nested append/prepend paths so a caller (such as <see cref="ScrollProp"/>)
+    /// can set a single merge direction for the current request.
+    /// </summary>
+    internal void ClearMergePaths()
+    {
+        _merge.AppendsAtPaths.Clear();
+        _merge.PrependsAtPaths.Clear();
+    }
 }
