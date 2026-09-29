@@ -24,6 +24,15 @@ internal class Page
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, ScrollPropEntry>? ScrollProps { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, List<string>>? DeferredProps { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, OncePropEntry>? OnceProps { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? RescuedProps { get; set; }
+
     [JsonIgnore]
     public bool EncryptHistory { get; set; }
 

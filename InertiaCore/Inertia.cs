@@ -122,6 +122,54 @@ public static class Inertia
     public static LazyProp Lazy(Func<Task<object?>> callback) => GetFactory().Lazy(callback);
 
     /// <summary>
+    /// Creates a deferred prop that is excluded from the initial page load and resolved
+    /// only when requested. Deferred props are announced through <c>deferredProps</c>.
+    /// See: https://inertiajs.com/deferred-props
+    /// </summary>
+    public static DeferredProp Defer(Func<object?> factory) => GetFactory().Defer(factory);
+
+    /// <summary>
+    /// Creates a deferred prop in the given group.
+    /// </summary>
+    public static DeferredProp Defer(Func<object?> factory, string group) => GetFactory().Defer(factory, group);
+
+    /// <summary>
+    /// Creates a deferred prop in the given group, optionally rescuing resolution errors.
+    /// </summary>
+    public static DeferredProp Defer(Func<object?> factory, string group, bool rescue) =>
+        GetFactory().Defer(factory, group, rescue);
+
+    /// <summary>
+    /// Creates a deferred prop with an asynchronous factory.
+    /// </summary>
+    public static DeferredProp Defer(Func<Task<object?>> factory) => GetFactory().Defer(factory);
+
+    /// <summary>
+    /// Creates a deferred prop in the given group with an asynchronous factory.
+    /// </summary>
+    public static DeferredProp Defer(Func<Task<object?>> factory, string group) =>
+        GetFactory().Defer(factory, group);
+
+    /// <summary>
+    /// Creates a deferred prop in the given group with an asynchronous factory,
+    /// optionally rescuing resolution errors.
+    /// </summary>
+    public static DeferredProp Defer(Func<Task<object?>> factory, string group, bool rescue) =>
+        GetFactory().Defer(factory, group, rescue);
+
+    /// <summary>
+    /// Creates a once prop that is resolved a single time and remembered by the client
+    /// across subsequent navigations.
+    /// See: https://inertiajs.com/once-props
+    /// </summary>
+    public static OnceProp Once(Func<object?> callback) => GetFactory().Once(callback);
+
+    /// <summary>
+    /// Creates a once prop with an asynchronous factory.
+    /// </summary>
+    public static OnceProp Once(Func<Task<object?>> callback) => GetFactory().Once(callback);
+
+    /// <summary>
     /// Creates a prop whose value is merged with the existing client-side value
     /// during partial reloads instead of replacing it.
     /// </summary>

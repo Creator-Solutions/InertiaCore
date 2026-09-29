@@ -94,6 +94,52 @@ public interface IInertia
     DeferredProp Defer(Func<Task<object?>> factory);
 
     /// <summary>
+    /// Create a DeferredProp in the given group. Deferred props in the same group are
+    /// fetched together in parallel by the client.
+    /// </summary>
+    /// <param name="factory">The factory that produces the prop value.</param>
+    /// <param name="group">The defer group.</param>
+    DeferredProp Defer(Func<object?> factory, string group);
+
+    /// <summary>
+    /// Create a DeferredProp in the given group, optionally rescuing resolution errors.
+    /// </summary>
+    /// <param name="factory">The factory that produces the prop value.</param>
+    /// <param name="group">The defer group.</param>
+    /// <param name="rescue">Whether resolution failures should be rescued.</param>
+    DeferredProp Defer(Func<object?> factory, string group, bool rescue);
+
+    /// <summary>
+    /// Create a DeferredProp in the given group with an asynchronous factory.
+    /// </summary>
+    /// <param name="factory">The asynchronous factory that produces the prop value.</param>
+    /// <param name="group">The defer group.</param>
+    DeferredProp Defer(Func<Task<object?>> factory, string group);
+
+    /// <summary>
+    /// Create a DeferredProp in the given group with an asynchronous factory, optionally
+    /// rescuing resolution errors.
+    /// </summary>
+    /// <param name="factory">The asynchronous factory that produces the prop value.</param>
+    /// <param name="group">The defer group.</param>
+    /// <param name="rescue">Whether resolution failures should be rescued.</param>
+    DeferredProp Defer(Func<Task<object?>> factory, string group, bool rescue);
+
+    /// <summary>
+    /// Create a OnceProp that is resolved a single time and remembered by the client
+    /// across subsequent navigations.
+    /// See: https://inertiajs.com/once-props
+    /// </summary>
+    /// <param name="callback">The factory that produces the prop value.</param>
+    OnceProp Once(Func<object?> callback);
+
+    /// <summary>
+    /// Create a OnceProp with an asynchronous factory.
+    /// </summary>
+    /// <param name="callback">The asynchronous factory that produces the prop value.</param>
+    OnceProp Once(Func<Task<object?>> callback);
+
+    /// <summary>
     /// Create a MergeProp whose value is merged with the existing client-side value
     /// during partial reloads instead of replacing it.
     /// </summary>

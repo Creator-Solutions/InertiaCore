@@ -37,6 +37,30 @@ public interface IResponseFactory
     LazyProp Lazy(Func<object?> callback);
     LazyProp Lazy(Func<Task<object?>> callback);
 
+    /// <summary>Creates a deferred prop in the default group.</summary>
+    DeferredProp Defer(Func<object?> factory);
+
+    /// <summary>Creates a deferred prop in the given group.</summary>
+    DeferredProp Defer(Func<object?> factory, string group);
+
+    /// <summary>Creates a deferred prop in the given group, optionally rescuing resolution errors.</summary>
+    DeferredProp Defer(Func<object?> factory, string group, bool rescue);
+
+    /// <summary>Creates a deferred prop in the default group from an asynchronous factory.</summary>
+    DeferredProp Defer(Func<Task<object?>> factory);
+
+    /// <summary>Creates a deferred prop in the given group from an asynchronous factory.</summary>
+    DeferredProp Defer(Func<Task<object?>> factory, string group);
+
+    /// <summary>Creates a deferred prop in the given group from an asynchronous factory, optionally rescuing errors.</summary>
+    DeferredProp Defer(Func<Task<object?>> factory, string group, bool rescue);
+
+    /// <summary>Creates a once prop from a synchronous factory.</summary>
+    OnceProp Once(Func<object?> callback);
+
+    /// <summary>Creates a once prop from an asynchronous factory.</summary>
+    OnceProp Once(Func<Task<object?>> callback);
+
     /// <summary>Creates a merge prop from a value.</summary>
     MergeProp Merge(object? value);
 
@@ -203,6 +227,14 @@ internal class ResponseFactory : IResponseFactory
 
     public LazyProp Lazy(Func<object?> callback) => new(callback);
     public LazyProp Lazy(Func<Task<object?>> callback) => new(callback);
+    public DeferredProp Defer(Func<object?> factory) => new(factory);
+    public DeferredProp Defer(Func<object?> factory, string group) => new(factory, group);
+    public DeferredProp Defer(Func<object?> factory, string group, bool rescue) => new(factory, group, rescue);
+    public DeferredProp Defer(Func<Task<object?>> factory) => new(factory);
+    public DeferredProp Defer(Func<Task<object?>> factory, string group) => new(factory, group);
+    public DeferredProp Defer(Func<Task<object?>> factory, string group, bool rescue) => new(factory, group, rescue);
+    public OnceProp Once(Func<object?> callback) => new(callback);
+    public OnceProp Once(Func<Task<object?>> callback) => new(callback);
     public AlwaysProp Always(object? value) => new(value);
     public AlwaysProp Always(Func<object?> callback) => new(callback);
     public AlwaysProp Always(Func<Task<object?>> callback) => new(callback);
