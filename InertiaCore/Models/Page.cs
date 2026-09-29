@@ -21,6 +21,9 @@ internal class Page
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? MatchPropsOn { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, ScrollPropEntry>? ScrollProps { get; set; }
+
     [JsonIgnore]
     public bool EncryptHistory { get; set; }
 

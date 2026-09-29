@@ -21,6 +21,12 @@ scroll and pagination packages. No breaking changes.
   partial reload only advertises merge props it actually returned.
 - Metadata keys are camelCased the same way as prop names (`TestMerge` → `testMerge`,
   `MatchOn("data.id")` → `posts.data.id`).
+- `Inertia.Scroll(items, metadata)` / `inertia.Scroll(...)` configure a paginated prop
+  for infinite scroll. `ScrollMetadata` (a plain public record with `PageName`,
+  `PreviousPage`, `NextPage`, `CurrentPage`) is emitted under `scrollProps`, and the
+  inner array (`data` by default) is labelled for append or prepend merge based on the
+  `X-Inertia-Infinite-Scroll-Merge-Intent` request header. `X-Inertia-Reset` sets the
+  entry's `reset` flag. Null tokens are serialized as `null`.
 
 ---
 

@@ -131,6 +131,33 @@ public interface IInertia
     MergeProp DeepMerge(Func<Task<object?>> callback);
 
     /// <summary>
+    /// Create an infinite-scroll prop from a paginated value. The inner array is
+    /// appended or prepended during partial reloads based on the
+    /// <c>X-Inertia-Infinite-Scroll-Merge-Intent</c> request header, and the cursor
+    /// is emitted under <c>scrollProps</c>.
+    /// </summary>
+    /// <param name="items">The paginated value, typically an object with a data array.</param>
+    /// <param name="metadata">The cursor metadata (page name and previous/next/current tokens).</param>
+    /// <param name="wrapper">The key of the array within the prop that should be merged.</param>
+    ScrollProp Scroll(object? items, ScrollMetadata metadata, string wrapper = "data");
+
+    /// <summary>
+    /// Create an infinite-scroll prop from a synchronous factory.
+    /// </summary>
+    /// <param name="items">The factory that produces the paginated value.</param>
+    /// <param name="metadata">The cursor metadata.</param>
+    /// <param name="wrapper">The key of the array within the prop that should be merged.</param>
+    ScrollProp Scroll(Func<object?> items, ScrollMetadata metadata, string wrapper = "data");
+
+    /// <summary>
+    /// Create an infinite-scroll prop from an asynchronous factory.
+    /// </summary>
+    /// <param name="items">The asynchronous factory that produces the paginated value.</param>
+    /// <param name="metadata">The cursor metadata.</param>
+    /// <param name="wrapper">The key of the array within the prop that should be merged.</param>
+    ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data");
+
+    /// <summary>
     /// Set whether to encrypt history state on the client side.
     /// </summary>
     void EncryptHistory(bool encrypt = true);

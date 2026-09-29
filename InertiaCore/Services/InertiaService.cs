@@ -98,6 +98,18 @@ public sealed class InertiaService : IInertia
     public MergeProp DeepMerge(Func<Task<object?>> callback) => _factory.DeepMerge(callback);
 
     /// <inheritdoc />
+    public ScrollProp Scroll(object? items, ScrollMetadata metadata, string wrapper = "data") =>
+        _factory.Scroll(items, metadata, wrapper);
+
+    /// <inheritdoc />
+    public ScrollProp Scroll(Func<object?> items, ScrollMetadata metadata, string wrapper = "data") =>
+        _factory.Scroll(items, metadata, wrapper);
+
+    /// <inheritdoc />
+    public ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data") =>
+        _factory.Scroll(items, metadata, wrapper);
+
+    /// <inheritdoc />
     public void EncryptHistory(bool encrypt = true) => _factory.EncryptHistory(encrypt);
 
     /// <inheritdoc />
