@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.IO.Abstractions;
@@ -61,6 +62,16 @@ internal class ViteBuilder : IViteBuilder
     private string? Nonce => Options.NonceResolver?.Invoke() ?? Options.CspNonce;
 
     /// <summary>
+    /// The rendered <c>nonce</c> attribute (including its leading space), or an empty
+    /// string when no nonce is configured. The value is HTML-attribute-encoded.
+    /// </summary>
+    private string NonceAttribute()
+    {
+        var nonce = Nonce;
+        return string.IsNullOrEmpty(nonce) ? string.Empty : $" nonce=\"{HtmlEncoder.Default.Encode(nonce)}\"";
+    }
+
+    /// <summary>
     /// Generates various tags from the given input files.
     /// </summary>
     public HtmlString Input(params string[] entryPoints)
@@ -112,8 +123,7 @@ internal class ViteBuilder : IViteBuilder
             return new HtmlString("<!-- no hot -->");
         }
 
-        var nonce = Nonce;
-        var nonceAttribute = string.IsNullOrEmpty(nonce) ? "" : $" nonce=\"{nonce}\"";
+        var nonceAttribute = NonceAttribute();
 
         var inner = $"import RefreshRuntime from '{AssetUrl("@react-refresh")}';" +
                     "RefreshRuntime.injectIntoGlobalHook(window);" +
@@ -330,8 +340,10 @@ internal class ViteBuilder : IViteBuilder
         {
             if (value is null || value is false) continue;
 
-            if (value is true) parts.Add(key);
-            else parts.Add($"{key}=\"{value}\"");
+            var encodedKey = HtmlEncoder.Default.Encode(key);
+
+            if (value is true) parts.Add(encodedKey);
+            else parts.Add($"{encodedKey}=\"{HtmlEncoder.Default.Encode(value.ToString() ?? string.Empty)}\"");
         }
 
         return string.Join(" ", parts);
@@ -379,16 +391,17 @@ internal class ViteBuilder : IViteBuilder
         if (assets.Count == 0) return null;
 
         var json = JsonSerializer.Serialize(assets);
-        var nonce = Nonce;
-        var nonceAttribute = string.IsNullOrEmpty(nonce) ? "" : $" nonce=\"{nonce}\"";
-        var prefetchEvent = Options.PrefetchEvent;
+        var nonceAttribute = NonceAttribute();
+        // Serialize rather than interpolate so quotes, backslashes and control
+        // characters in the configured event name cannot break out of the literal.
+        var prefetchEvent = JsonSerializer.Serialize(Options.PrefetchEvent);
 
         string script;
         if (Options.PrefetchStrategy == PrefetchStrategy.Aggressive)
         {
             script =
                 $"<script{nonceAttribute}>" +
-                $"window.addEventListener('{prefetchEvent}', () => window.setTimeout(() => {{" +
+                $"window.addEventListener({prefetchEvent}, () => window.setTimeout(() => {{" +
                 "const makeLink = (asset) => {" +
                 "const link = document.createElement('link');" +
                 "Object.keys(asset).forEach((attribute) => {" +
@@ -405,7 +418,7 @@ internal class ViteBuilder : IViteBuilder
         {
             script =
                 $"<script{nonceAttribute}>" +
-                $"window.addEventListener('{prefetchEvent}', () => window.setTimeout(() => {{" +
+                $"window.addEventListener({prefetchEvent}, () => window.setTimeout(() => {{" +
                 "const makeLink = (asset) => {" +
                 "const link = document.createElement('link');" +
                 "Object.keys(asset).forEach((attribute) => {" +

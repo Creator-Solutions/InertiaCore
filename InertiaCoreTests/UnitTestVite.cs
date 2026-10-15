@@ -336,7 +336,7 @@ public partial class Tests
 
         Assert.Multiple(() =>
         {
-            Assert.That(result, Does.Contain("window.addEventListener('load'"));
+            Assert.That(result, Does.Contain("window.addEventListener(\"load\""));
             Assert.That(result, Does.Contain("\"rel\":\"prefetch\""));
             Assert.That(result, Does.Contain("\"href\":\"/build/assets/page-abc.js\""));
             Assert.That(result, Does.Contain("\"href\":\"/build/assets/page.css\""));
@@ -372,7 +372,7 @@ public partial class Tests
 
         Assert.Multiple(() =>
         {
-            Assert.That(result, Does.Contain("window.addEventListener('DOMContentLoaded'"));
+            Assert.That(result, Does.Contain("window.addEventListener(\"DOMContentLoaded\""));
             Assert.That(result, Does.Contain("loadNext("));
             Assert.That(result, Does.Contain(", 2)"));
         });
