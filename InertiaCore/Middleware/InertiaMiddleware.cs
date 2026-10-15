@@ -93,7 +93,7 @@ public class InertiaMiddleware
     /// from being abused as an open redirect, including protocol-relative
     /// (<c>//host</c>) and backslash-prefixed forms.
     /// </summary>
-    private static string GetSafeBackUrl(HttpContext context)
+    internal static string GetSafeBackUrl(HttpContext context)
     {
         var referer = context.Request.Headers["Referer"].ToString();
         var fallback = context.Request.Path + context.Request.QueryString;
@@ -107,8 +107,11 @@ public class InertiaMiddleware
         if (!uri.IsAbsoluteUri)
         {
             // Browsers resolve "//host" and "\host" (and "/\host") off-site, so reject
-            // those while still allowing ordinary relative paths.
-            if (referer.StartsWith("//", StringComparison.Ordinal) ||
+            // those while still allowing ordinary relative paths. Browsers also strip
+            // tab/newline characters, so "/<tab>/evil" would normalize to "//evil":
+            // reject any value containing control characters or whitespace.
+            if (ContainsControlOrWhitespace(referer) ||
+                referer.StartsWith("//", StringComparison.Ordinal) ||
                 referer.StartsWith("/\\", StringComparison.Ordinal) ||
                 referer.StartsWith("\\", StringComparison.Ordinal))
             {
@@ -126,5 +129,16 @@ public class InertiaMiddleware
         var samePort = uri.Port == requestPort;
 
         return isHttp && sameScheme && sameHost && samePort ? uri.PathAndQuery + uri.Fragment : fallback;
+    }
+
+    private static bool ContainsControlOrWhitespace(string value)
+    {
+        foreach (var c in value)
+        {
+            if (char.IsControl(c) || char.IsWhiteSpace(c))
+                return true;
+        }
+
+        return false;
     }
 }
