@@ -188,13 +188,54 @@ internal class ResponseFactory : IResponseFactory
         }
 
         var data = JsonSerializer.Serialize(model, _jsonOptions);
-        // v3 protocol: escape forward slashes to avoid premature </script> termination
-        var escaped = data.Replace("/", "\\/");
+        var escaped = EscapeJsonForHtmlScript(data);
 
         return new HtmlString(
             $"<script data-page=\"app\" type=\"application/json\">{escaped}</script>\n" +
             $"<div id=\"app\"></div>"
         );
+    }
+
+    /// <summary>
+    /// Escapes a JSON document for embedding inside a &lt;script&gt; element,
+    /// independently of the host's configured <see cref="JsonSerializerOptions.Encoder"/>.
+    /// Escapes the characters that can terminate the element or alter parsing
+    /// (<c>&lt;</c>, <c>&gt;</c>, <c>&amp;</c>, U+2028 and U+2029). Forward slashes are
+    /// also escaped, matching the Inertia v3 protocol.
+    /// </summary>
+    private static string EscapeJsonForHtmlScript(string json)
+    {
+        var builder = new System.Text.StringBuilder(json.Length);
+
+        foreach (var c in json)
+        {
+            switch (c)
+            {
+                case '<':
+                    builder.Append("\\u003C");
+                    break;
+                case '>':
+                    builder.Append("\\u003E");
+                    break;
+                case '&':
+                    builder.Append("\\u0026");
+                    break;
+                case '\u2028':
+                    builder.Append("\\u2028");
+                    break;
+                case '\u2029':
+                    builder.Append("\\u2029");
+                    break;
+                case '/':
+                    builder.Append("\\/");
+                    break;
+                default:
+                    builder.Append(c);
+                    break;
+            }
+        }
+
+        return builder.ToString();
     }
 
     public void Version(string? version) => _state.Version = version;
