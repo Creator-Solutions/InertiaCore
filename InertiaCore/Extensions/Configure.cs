@@ -8,6 +8,7 @@ using InertiaCore.Services;
 using InertiaCore.Services.Version;
 using InertiaCore.Ssr;
 using InertiaCore.Utils;
+using InertiaCore.Validation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -73,6 +74,11 @@ public static class Configure
 
         services.AddScoped<IErrorBagService, ErrorBagService>();
         services.AddScoped<InertiaValidationFilter>();
+        services.AddScoped<InertiaPrecognitionFilter>();
+
+        // TryAddScoped so applications (and the validation epic) can replace the
+        // default DataAnnotations-based validator with their own implementation.
+        services.TryAddScoped<IInertiaRequestValidator, DataAnnotationsRequestValidator>();
 
         services.AddScoped<IInertiaVersionProvider>(sp =>
         {
@@ -119,6 +125,10 @@ public static class Configure
         {
             mvcOptions.Filters.Add<InertiaActionFilter>();
             mvcOptions.Filters.Add<InertiaValidationFilter>();
+
+            // Order -3000 so precognitive requests are handled before MVC's automatic
+            // 400-on-invalid-model filter (ModelStateInvalidFilter, order -2000).
+            mvcOptions.Filters.Add<InertiaPrecognitionFilter>(-3000);
         });
 
         return services;

@@ -40,6 +40,32 @@ internal static class InertiaExtensions
 
     internal static bool IsInertiaRequest(this ActionContext context) => context.HttpContext.IsInertiaRequest();
 
+    /// <summary>
+    /// Whether this is an Inertia Precognition request (the client sent
+    /// <c>Precognition: true</c>).
+    /// </summary>
+    internal static bool IsPrecognitionRequest(this HttpContext context) =>
+        context.Request.Headers[InertiaHeader.Precognition] == "true";
+
+    /// <summary>
+    /// The field names supplied in the <c>Precognition-Validate-Only</c> header.
+    /// Returns an empty set when the header is absent or blank (meaning: validate all
+    /// fields). Matching is case-insensitive.
+    /// </summary>
+    internal static IReadOnlySet<string> GetPrecognitionValidateOnly(this HttpContext context)
+    {
+        var header = context.Request.Headers[InertiaHeader.PrecognitionValidateOnly].ToString();
+
+        if (string.IsNullOrWhiteSpace(header))
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        return header
+            .Split(',')
+            .Select(field => field.Trim())
+            .Where(field => field.Length > 0)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
     internal static string ToCamelCase(this string s) => JsonNamingPolicy.CamelCase.ConvertName(s);
 
     internal static string ToCamelCasePath(this string s) =>
