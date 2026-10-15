@@ -595,6 +595,37 @@ internal class ViteBuilder : IViteBuilder
         return manifest;
     }
 
+    /// <summary>
+    /// Synchronous counterpart of <see cref="ReadManifestStringWithCacheAsync"/>.
+    /// Shares the same cache so the manifest is not re-read on every request; returns
+    /// <see langword="null"/> when the manifest is missing.
+    /// </summary>
+    private string? ReadManifestStringWithCache()
+    {
+        var path = GetBuildPathForFile(Options.ManifestFilename);
+        if (!_fileSystem.File.Exists(path))
+            return null;
+
+        var now = DateTime.UtcNow;
+        lock (_cacheLock)
+        {
+            if (_cachedManifest != null && now - _lastManifestRead < CacheDuration)
+            {
+                return _cachedManifest;
+            }
+        }
+
+        var manifest = _fileSystem.File.ReadAllText(path);
+
+        lock (_cacheLock)
+        {
+            _cachedManifest = manifest;
+            _lastManifestRead = now;
+        }
+
+        return manifest;
+    }
+
     internal void ClearManifestCache()
     {
         lock (_cacheLock)
@@ -616,12 +647,14 @@ internal class ViteBuilder : IViteBuilder
     }
 
     /// <summary>
-    /// Get a hash of the manifest file, or null when running hot or missing.
+    /// Get a hash of the manifest file, or null when running hot or missing. The
+    /// manifest is read through the shared cache so it is not re-read and hashed on
+    /// every call.
     /// </summary>
     public string? GetManifestHash()
     {
         if (IsRunningHot()) return null;
-        return GetManifest()?.MD5();
+        return ReadManifestStringWithCache()?.MD5();
     }
 }
 
