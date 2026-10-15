@@ -43,6 +43,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Data", "testDeferred" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -75,6 +76,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Data", "testDeferred" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -106,6 +108,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Data", "deferredA" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -136,6 +139,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Data", "testDeferred" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 

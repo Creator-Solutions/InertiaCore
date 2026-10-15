@@ -1,5 +1,6 @@
 using InertiaCore.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InertiaCoreTests;
 
@@ -28,6 +29,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Data", "testPartial" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -59,6 +61,7 @@ public partial class Tests
 
         var headers = new HeaderDictionary
         {
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -102,6 +105,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Except", "TestFunc,TestLazy" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -144,6 +148,7 @@ public partial class Tests
         {
             { "X-Inertia-Partial-Data", "Test,TestFunc,TestLazy" },
             { "X-Inertia-Partial-Except", "TestFunc,TestLazy" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -159,5 +164,43 @@ public partial class Tests
             { "test", "Test" },
             { "errors", new Dictionary<string, string>(0) }
         }));
+    }
+
+    [Test]
+    [Description("SC-08: a full-page (non-Inertia) request ignores partial headers.")]
+    public async Task TestPartialHeadersIgnoredForNonInertiaRequest()
+    {
+        var response = _factory.Render("Test/Page", new
+        {
+            Test = "Test",
+            TestPartial = "Partial",
+            TestLazy = _factory.Lazy(() =>
+            {
+                Assert.Fail("A full-page load must not resolve lazy props.");
+                return "Lazy";
+            })
+        });
+
+        // Partial headers are present, but X-Inertia is not: this must be treated as a
+        // full page load, so no partial filtering happens and lazy props stay excluded.
+        var headers = new HeaderDictionary
+        {
+            { "X-Inertia-Partial-Data", "testPartial" },
+            { "X-Inertia-Partial-Component", "Test/Page" }
+        };
+
+        var context = PrepareContext(headers);
+
+        response.SetContext(context);
+        await response.ProcessResponse();
+
+        var page = (response.GetResult() as ViewResult)?.Model as Page;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page?.Props, Does.ContainKey("test"));
+            Assert.That(page?.Props, Does.ContainKey("testPartial"));
+            Assert.That(page?.Props, Does.Not.ContainKey("testLazy"));
+        });
     }
 }

@@ -9,8 +9,15 @@ namespace InertiaCore.Extensions;
 
 internal static class InertiaExtensions
 {
+    /// <summary>
+    /// Whether this is an Inertia partial reload for the given component. A partial
+    /// reload is only valid for an Inertia request (the client always sends
+    /// <c>X-Inertia: true</c> alongside the partial headers); requiring it stops a
+    /// plain full-page request from being treated as a partial reload.
+    /// </summary>
     internal static bool IsInertiaPartialComponent(this ActionContext context, string component) =>
-        context.HttpContext.Request.Headers[InertiaHeader.PartialComponent] == component;
+        context.HttpContext.IsInertiaRequest()
+        && context.HttpContext.Request.Headers[InertiaHeader.PartialComponent] == component;
 
     internal static string RequestedUri(this HttpContext context) =>
         Uri.UnescapeDataString(context.Request.GetEncodedPathAndQuery());
