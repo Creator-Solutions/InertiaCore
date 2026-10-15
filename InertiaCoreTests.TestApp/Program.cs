@@ -5,8 +5,10 @@ using InertiaCore.Props;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInertia();
+builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+app.UseRouting();
 app.UseInertia();
 
 app.MapGet("/merge", async (IInertia inertia) =>
@@ -52,6 +54,11 @@ app.MapPost("/precognition", (PrecognitionInput input) =>
     // path, which is unrelated to Precognition.
     return Results.Text("ok");
 }).WithInertiaPrecognition();
+
+app.MapGet("/protocol/target", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+app.MapControllers();
 
 app.Run();
 

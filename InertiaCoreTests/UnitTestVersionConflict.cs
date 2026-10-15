@@ -5,7 +5,6 @@ using InertiaCore.Models;
 using InertiaCore.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Moq;
 
 namespace InertiaCoreTests;
 
@@ -37,9 +36,12 @@ public partial class Tests
         });
     }
 
-    [Test]
-    [Description("POST with version mismatch returns 409 Conflict (protocol requirement).")]
-    public async Task TestVersionConflictOnPost()
+    [TestCase("POST")]
+    [TestCase("PUT")]
+    [TestCase("PATCH")]
+    [TestCase("DELETE")]
+    [Description("Non-GET requests never receive a version-mismatch 409 (protocol requirement).")]
+    public async Task TestNoVersionConflictOnNonGet(string method)
     {
         _factory.Version("server-version");
 
@@ -50,71 +52,16 @@ public partial class Tests
         };
 
         var context = PrepareContext(headers);
-        context.HttpContext.Request.Method = "POST";
+        context.HttpContext.Request.Method = method;
 
-        await RunVersionCheck(context, () => { }, _factory.GetVersion);
+        var calledNext = false;
+        await RunVersionCheck(context, () => calledNext = true, _factory.GetVersion);
 
-        Assert.That(context.HttpContext.Response.StatusCode, Is.EqualTo((int)HttpStatusCode.Conflict));
-    }
-
-    [Test]
-    [Description("PUT with version mismatch returns 409 Conflict.")]
-    public async Task TestVersionConflictOnPut()
-    {
-        _factory.Version("server-version");
-
-        var headers = new HeaderDictionary
+        Assert.Multiple(() =>
         {
-            { "X-Inertia", "true" },
-            { "X-Inertia-Version", "old-version" }
-        };
-
-        var context = PrepareContext(headers);
-        context.HttpContext.Request.Method = "PUT";
-
-        await RunVersionCheck(context, () => { }, _factory.GetVersion);
-
-        Assert.That(context.HttpContext.Response.StatusCode, Is.EqualTo((int)HttpStatusCode.Conflict));
-    }
-
-    [Test]
-    [Description("PATCH with version mismatch returns 409 Conflict.")]
-    public async Task TestVersionConflictOnPatch()
-    {
-        _factory.Version("server-version");
-
-        var headers = new HeaderDictionary
-        {
-            { "X-Inertia", "true" },
-            { "X-Inertia-Version", "old-version" }
-        };
-
-        var context = PrepareContext(headers);
-        context.HttpContext.Request.Method = "PATCH";
-
-        await RunVersionCheck(context, () => { }, _factory.GetVersion);
-
-        Assert.That(context.HttpContext.Response.StatusCode, Is.EqualTo((int)HttpStatusCode.Conflict));
-    }
-
-    [Test]
-    [Description("DELETE with version mismatch returns 409 Conflict.")]
-    public async Task TestVersionConflictOnDelete()
-    {
-        _factory.Version("server-version");
-
-        var headers = new HeaderDictionary
-        {
-            { "X-Inertia", "true" },
-            { "X-Inertia-Version", "old-version" }
-        };
-
-        var context = PrepareContext(headers);
-        context.HttpContext.Request.Method = "DELETE";
-
-        await RunVersionCheck(context, () => { }, _factory.GetVersion);
-
-        Assert.That(context.HttpContext.Response.StatusCode, Is.EqualTo((int)HttpStatusCode.Conflict));
+            Assert.That(context.HttpContext.Response.StatusCode, Is.Not.EqualTo((int)HttpStatusCode.Conflict));
+            Assert.That(calledNext, Is.True);
+        });
     }
 
     [Test]
@@ -191,8 +138,9 @@ public partial class Tests
         var context = actionContext.HttpContext;
 
         var serverVersion = getVersion();
-        if (serverVersion != null
+        if (!string.IsNullOrEmpty(serverVersion)
             && context.IsInertiaRequest()
+            && HttpMethods.IsGet(context.Request.Method)
             && context.Request.Headers[InertiaHeader.Version] != serverVersion)
         {
             context.Response.Headers.Override(InertiaHeader.Location, context.RequestedUri());

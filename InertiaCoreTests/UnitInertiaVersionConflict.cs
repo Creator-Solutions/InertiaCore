@@ -45,6 +45,48 @@ public class UnitInertiaVersionConflict
         Assert.That(
             response.Headers.GetValues("X-Inertia-Location").First(),
             Is.EqualTo("/some-page"));
+        Assert.That(response.Headers.Contains("X-Inertia"), Is.False, "a control 409 carries no X-Inertia header");
+        Assert.That(
+            response.Headers.GetValues("X-Inertia-Version").First(),
+            Is.EqualTo("server-v2"));
+    }
+
+    [Test]
+    [Description("Non-GET requests never receive a version-mismatch 409.")]
+    public async Task Middleware_DoesNotConflict_OnNonGet_WithDifferentVersion()
+    {
+        using var host = await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder
+                    .UseTestServer()
+                    .ConfigureServices(services =>
+                    {
+                        services.AddControllersWithViews();
+                        services.AddInertia();
+                        services.AddInertiaVersion("server-v2");
+                    })
+                    .Configure(app =>
+                    {
+                        app.UseInertia();
+                        app.Run(ctx =>
+                        {
+                            ctx.Response.ContentType = "text/plain";
+                            return ctx.Response.WriteAsync("OK");
+                        });
+                    });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/some-page");
+        request.Headers.Add("X-Inertia", "true");
+        request.Headers.Add("X-Inertia-Version", "client-v1");
+
+        var response = await client.SendAsync(request);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(response.Headers.Contains("X-Inertia-Location"), Is.False);
     }
 
     [Test]

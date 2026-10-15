@@ -33,9 +33,19 @@ internal class Page
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? RescuedProps { get; set; }
 
-    [JsonIgnore]
+    /// <summary>Top-level prop keys registered via <c>Inertia.Share</c>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? SharedProps { get; set; }
+
+    /// <summary>Whether to encrypt the current page's history state. Emitted only when true.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool EncryptHistory { get; set; }
 
-    [JsonIgnore]
+    /// <summary>Whether to clear any encrypted history state. Emitted only when true.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ClearHistory { get; set; }
+
+    /// <summary>Whether to preserve the URL fragment from the original request across a redirect. Emitted only when true.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool PreserveFragment { get; set; }
 }

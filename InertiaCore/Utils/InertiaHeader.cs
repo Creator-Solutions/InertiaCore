@@ -30,4 +30,10 @@ public static class InertiaHeader
 
     /// <summary>Response header set to <c>true</c> when precognitive validation passes.</summary>
     public const string PrecognitionSuccess = "Precognition-Success";
+
+    /// <summary>Request header set to <c>prefetch</c> for prefetch requests.</summary>
+    public const string Purpose = "Purpose";
+
+    /// <summary>Response header carrying the full URL (including fragment) for a fragment redirect (409).</summary>
+    public const string Redirect = "X-Inertia-Redirect";
 }
