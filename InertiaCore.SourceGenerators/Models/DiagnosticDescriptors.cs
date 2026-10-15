@@ -21,4 +21,20 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor Inertia005 = new(
+        id: "INERTIA005",
+        title: "Duplicate component name across types",
+        messageFormat: "The component name '{0}' is declared on multiple types ('{1}' and '{2}'). Each [InertiaPage] component name must be unique across types so it can be resolved from a props type.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor Inertia006 = new(
+        id: "INERTIA006",
+        title: "Render<T> requires an [InertiaPage] type",
+        messageFormat: "The type '{0}' is not declared with [InertiaPage], so its page component cannot be resolved. Add [InertiaPage(\"...\")] to the type or use Render(component, props).",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

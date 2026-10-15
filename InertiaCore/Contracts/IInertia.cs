@@ -18,6 +18,17 @@ public interface IInertia
     Task<IActionResult> Render(string component, object? props = null);
 
     /// <summary>
+    /// Renders the page component associated with <typeparamref name="TProps"/>. The
+    /// component name is resolved from <see cref="InertiaPageRegistry"/> by the type,
+    /// which must be declared with <c>[InertiaPage("...")]</c>.
+    /// </summary>
+    /// <typeparam name="TProps">The props record/class type declared with <c>[InertiaPage]</c>.</typeparam>
+    /// <param name="props">The props instance.</param>
+    /// <returns>An <see cref="IActionResult"/> that returns either a JSON envelope or a full page view.</returns>
+    Task<IActionResult> Render<TProps>(TProps props) =>
+        Render(InertiaPageRegistry.ResolveComponent(typeof(TProps)), props);
+
+    /// <summary>
     /// Return an external redirect via an Inertia Location response (409 + X-Inertia-Location).
     /// </summary>
     IActionResult Location(string url);
