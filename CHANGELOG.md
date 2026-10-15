@@ -1,5 +1,50 @@
 # Changelog
 
+## Unreleased — Security Hardening
+
+Hardening from an internal security audit. No public API is removed; behavioural
+changes are listed below.
+
+### Security
+
+- **SSR gateway hardened (SC-01/SC-14).** `Gateway` applies a timeout
+  (`InertiaOptions.SsrTimeout`, default 5 s), rejects non-2xx and oversized
+  responses (`InertiaOptions.SsrMaxResponseBytes`, default 10 MB), only accepts
+  absolute `http`/`https` SSR URLs, and guards null `head`/`body`.
+- **`X-Inertia-Location` no longer decodes the request path (SC-03).** The encoded
+  path/query is used verbatim with CR/LF stripped.
+- **Referer back-redirect hardened (SC-04).** Relative `Referer` values containing
+  control characters or whitespace, or that can normalise to a protocol-relative
+  URL, are rejected.
+- **Page JSON escaped for the script context (SC-07).** `<`, `>`, `&`, U+2028,
+  U+2029 and `/` are escaped independently of the host's JSON encoder.
+- **Vite tag attributes encoded (SC-06).** Attribute keys/values are HTML-encoded
+  and the prefetch event is emitted as a serialized string.
+- **Vite manifest hash cached (SC-10).** `GetManifestHash()` uses the manifest cache
+  instead of re-reading and hashing the file on every call.
+
+### Changed (behaviour)
+
+- **SSR failure falls back to client-side rendering (SC-01).** A failed or
+  timed-out SSR request now logs a warning and renders the client-side script tag
+  instead of throwing a 500.
+- **`AddInertiaVersion` resolvers are scoped (SC-05).**
+  `AddInertiaVersion(Func<IServiceProvider, string>)` and
+  `AddInertiaVersion<TResolver>()` now register `IInertiaVersionProvider` /
+  `IInertiaVersionResolver` as scoped (previously singleton), preventing
+  request-scoped dependencies from being shared between requests.
+- **Partial reloads require `X-Inertia: true` (SC-08).** A full-page request that
+  carries partial headers is no longer treated as a partial reload.
+- **Vite prefetch event uses a JSON string literal (SC-06).** The event name is
+  emitted double-quoted (`"load"`) instead of single-quoted, and nonce/attribute
+  values are HTML-encoded. Existing exact-string expectations were updated.
+
+### Added
+
+- `InertiaOptions.SsrTimeout` and `InertiaOptions.SsrMaxResponseBytes`.
+
+---
+
 ## Unreleased — Vite Helper: Laravel `@vite` Parity
 
 Brings the server-side Vite helper up to feature parity with Laravel's
