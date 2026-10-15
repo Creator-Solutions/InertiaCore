@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
 using InertiaCore.Props;
+using InertiaCoreTests.TestApp;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInertia();
@@ -57,6 +58,9 @@ app.MapPost("/precognition", (PrecognitionInput input) =>
 
 app.MapGet("/protocol/target", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+app.MapGet("/typed", async (IInertia inertia) =>
+    (IResult)await inertia.Render(new UsersIndexProps(new[] { "Ada", "Grace" }, 1)));
 
 app.MapControllers();
 

@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased — Typed Page Contracts (IN-54)
+
+Makes a props record the page contract: a type annotated with `[InertiaPage]` can be
+rendered by type, resolving the component name from the generated registry. No
+breaking change to existing public API.
+
+### Added
+
+- **`Render<TProps>(TProps props)`** on the static `Inertia` facade and on `IInertia`
+  (added as a default interface method, so existing implementers keep compiling). The
+  component name is resolved from `InertiaPageRegistry` by the props type.
+- **Type-to-component table.** The generator emits a `Type → component` dictionary
+  (populated from `typeof(...)`, no runtime reflection) alongside the existing
+  constants and registers it through the module initializer.
+- **`InertiaPageRegistry` type mapping:** `Register(Type, string)`,
+  `GetComponent(Type)` and `TryGetComponent(Type, out string)`.
+- **`INERTIA005`** — duplicate component name across distinct types.
+- **`INERTIA006`** (analyzer) — `Inertia.Render<T>` / `IInertia.Render<T>` used with a
+  type that has no `[InertiaPage]` (compile-time error; a clear
+  `InvalidOperationException` is the runtime fallback).
+
+### Notes
+
+- `[InertiaPage]` on props records works as on classes; wrapper members
+  (`DeferredProp`, `LazyProp`, `AlwaysProp`, …) are allowed on the record.
+- A type with multiple `[InertiaPage]` attributes has no unambiguous mapping and is
+  omitted from the type table (`Render<T>` throws for it); use the string overload.
+
+---
+
 ## Unreleased — Protocol Extras (IN-53)
 
 Adds the remaining small Inertia protocol features: history-field serialization,

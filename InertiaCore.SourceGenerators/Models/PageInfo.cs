@@ -7,13 +7,21 @@ internal sealed class PageInfo : IEquatable<PageInfo>
     public string ComponentName { get; }
     public string Identifier { get; }
     public string ContainingType { get; }
+
+    /// <summary>
+    /// The fully-qualified type name (emitted into the generated type map), or
+    /// <see langword="null"/> for assembly attributes and types that cannot be mapped.
+    /// </summary>
+    public string? TypeName { get; }
+
     public LocationInfo Location { get; }
 
-    public PageInfo(string componentName, string identifier, string containingType, LocationInfo location)
+    public PageInfo(string componentName, string identifier, string containingType, LocationInfo location, string? typeName = null)
     {
         ComponentName = componentName;
         Identifier = identifier;
         ContainingType = containingType;
+        TypeName = typeName;
         Location = location;
     }
 
@@ -24,6 +32,7 @@ internal sealed class PageInfo : IEquatable<PageInfo>
         return ComponentName == other.ComponentName
             && Identifier == other.Identifier
             && ContainingType == other.ContainingType
+            && TypeName == other.TypeName
             && Location == other.Location;
     }
 
@@ -37,6 +46,7 @@ internal sealed class PageInfo : IEquatable<PageInfo>
             hash = hash * 31 + (ComponentName?.GetHashCode() ?? 0);
             hash = hash * 31 + (Identifier?.GetHashCode() ?? 0);
             hash = hash * 31 + (ContainingType?.GetHashCode() ?? 0);
+            hash = hash * 31 + (TypeName?.GetHashCode() ?? 0);
             hash = hash * 31 + (Location?.GetHashCode() ?? 0);
             return hash;
         }

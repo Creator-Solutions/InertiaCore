@@ -66,6 +66,17 @@ public static class Inertia
 
     public static Response Render(string component, object? props = null) => GetFactory().Render(component, props);
 
+    /// <summary>
+    /// Renders the page component associated with <typeparamref name="TProps"/>.
+    /// The component name is resolved from <see cref="InertiaPageRegistry"/> by the
+    /// type, which must be declared with <c>[InertiaPage("...")]</c>.
+    /// </summary>
+    /// <typeparam name="TProps">The props record/class type declared with <c>[InertiaPage]</c>.</typeparam>
+    /// <param name="props">The props instance.</param>
+    /// <returns>The Inertia response.</returns>
+    public static Response Render<TProps>(TProps props) =>
+        GetFactory().Render(InertiaPageRegistry.ResolveComponent(typeof(TProps)), props);
+
     public static Task<IHtmlContent> Head(dynamic model) => GetFactory().Head(model);
 
     public static Task<IHtmlContent> Html(dynamic model) => GetFactory().Html(model);

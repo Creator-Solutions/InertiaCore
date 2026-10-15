@@ -53,6 +53,13 @@ public sealed class InertiaService : IInertia
     }
 
     /// <inheritdoc />
+    public Task<IActionResult> Render<TProps>(TProps props)
+    {
+        Response response = _factory.Render(InertiaPageRegistry.ResolveComponent(typeof(TProps)), props);
+        return Task.FromResult<IActionResult>(response);
+    }
+
+    /// <inheritdoc />
     public IActionResult Location(string url) => _factory.Location(url);
 
     /// <inheritdoc />
