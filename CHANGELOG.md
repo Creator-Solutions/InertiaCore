@@ -1,5 +1,57 @@
 # Changelog
 
+## Unreleased — Vite Helper: Laravel `@vite` Parity
+
+Brings the server-side Vite helper up to feature parity with Laravel's
+`Illuminate\Foundation\Vite`, including recursive import resolution, preload
+tags, CSP nonces, integrity hashes, tag attribute resolvers, prefetch
+strategies and a public async/hot/asset API. No breaking changes to existing
+single-entry usage.
+
+### Added
+
+- **Multiple entry points.** `Vite.Input(...)` / `Vite.InputAsync(...)` and the
+  builder equivalents now accept `params string[]` and render tags for every
+  entry point in a single call.
+- **Recursive imports and module preloading.** Manifest `imports` are walked and
+  emitted as `<link rel="modulepreload">`, and every imported chunk's `css` is
+  emitted as a `<link rel="preload" as="style">` plus its stylesheet.
+- **Asset preloading.** Every entry point and imported chunk now emits a preload
+  tag; stylesheet preloads are ordered before script preloads.
+- **CSP nonce support.** `ViteOptions.CspNonce` (static) and
+  `ViteOptions.NonceResolver` (per-request) apply a `nonce` attribute to every
+  generated script, stylesheet and preload tag.
+- **Subresource integrity.** `ViteOptions.IntegrityKey` (default `"integrity"`,
+  set to `null` to disable) reads the hash from the manifest chunk and emits an
+  `integrity` attribute.
+- **Tag attribute resolvers.** `ViteOptions.ScriptTagAttributes`,
+  `StyleTagAttributes` and `PreloadTagAttributes` allow appending custom
+  attributes. A preload resolver returning `null` skips the tag.
+- **Prefetch strategies.** `ViteOptions.PrefetchStrategy`
+  (`PrefetchStrategy.None` / `Waterfall` / `Aggressive`), `PrefetchConcurrency`
+  and `PrefetchEvent` render a prefetch script for manifest dynamic imports,
+  mirroring Laravel's `prefetch()`, `useWaterfallPrefetching()` and
+  `useAggressivePrefetching()`.
+- **Public async and helper API on the `Vite` facade:** `InputAsync`,
+  `ReactRefreshAsync`, `IsRunningHot`, `Asset` and `Content`, alongside the
+  existing `Input`, `ReactRefresh` and `GetManifestHash`.
+- New `ViteChunk`, `PrefetchStrategy`, `ViteScriptTagAttributesResolver`,
+  `ViteStyleTagAttributesResolver` and `VitePreloadTagAttributesResolver` types.
+
+### Changed
+
+- The Vite helper is no longer marked `[Obsolete]`; the sync methods remain for
+  compatibility and the async variants use cached manifest reads.
+- Generated tags now use Laravel's attribute ordering (`type` before `src`,
+  `rel` before `href`) and include preload tags. Existing exact-string
+  expectations should be updated.
+- `Vite.GetManifestHash()` now returns `null` while the dev server is running
+  (hot), matching Laravel, instead of hashing the stale manifest.
+- The CSS path detection regex is now anchored and matches Laravel's list
+  (`css|less|sass|scss|styl|stylus|pcss|postcss`).
+
+---
+
 ## v0.3.0 — Merge, Scroll, Deferred, Once & Rescued Props (IN-49 – IN-51)
 
 Adds support for Inertia's prop-merging, infinite-scroll, deferred, once and
