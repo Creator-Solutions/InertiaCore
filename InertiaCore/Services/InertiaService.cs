@@ -16,15 +16,33 @@ public sealed class InertiaService : IInertia
     private readonly IResponseFactory _factory;
     private readonly InertiaState _state;
     private readonly IOptions<InertiaOptions> _options;
+    private readonly IInertiaFlashProvider? _flashProvider;
 
     /// <summary>
     /// Initializes a new instance of <see cref="InertiaService"/>.
     /// </summary>
     public InertiaService(IResponseFactory factory, InertiaState state, IOptions<InertiaOptions> options)
+        : this(factory, state, options, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="InertiaService"/>.
+    /// </summary>
+    /// <param name="factory">The response factory.</param>
+    /// <param name="state">The per-request state.</param>
+    /// <param name="options">The Inertia options.</param>
+    /// <param name="flashProvider">The flash provider, used to persist flash across requests.</param>
+    public InertiaService(
+        IResponseFactory factory,
+        InertiaState state,
+        IOptions<InertiaOptions> options,
+        IInertiaFlashProvider? flashProvider)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _state = state ?? throw new ArgumentNullException(nameof(state));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _flashProvider = flashProvider;
     }
 
     /// <inheritdoc />
@@ -46,7 +64,15 @@ public sealed class InertiaService : IInertia
     /// <inheritdoc />
     public void Flash(string key, object? value)
     {
-        _state.FlashProps[key.ToCamelCase()] = value;
+        var camelCased = key.ToCamelCase();
+
+        // Persist for the next request when a provider is registered (so flash set
+        // before a redirect is shown on the target page); otherwise fall back to the
+        // current-request-only behaviour.
+        if (_flashProvider is not null)
+            _flashProvider.Flash(camelCased, value);
+        else
+            _state.FlashProps[camelCased] = value;
     }
 
     /// <inheritdoc />

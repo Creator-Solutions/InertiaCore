@@ -95,6 +95,7 @@ internal class ResponseFactory : IResponseFactory
     private readonly IGateway _gateway;
     private readonly IOptions<InertiaOptions> _options;
     private readonly InertiaState _state;
+    private readonly IInertiaFlashProvider? _flashProvider;
     private readonly JsonSerializerOptions _jsonOptions;
 
     private bool _clearHistory;
@@ -105,12 +106,14 @@ internal class ResponseFactory : IResponseFactory
         IGateway gateway,
         IOptions<InertiaOptions> options,
         InertiaState state,
-        IOptions<JsonOptions>? jsonOptions = null)
+        IOptions<JsonOptions>? jsonOptions = null,
+        IInertiaFlashProvider? flashProvider = null)
     {
         _contextAccessor = contextAccessor ?? throw new ArgumentNullException(nameof(contextAccessor));
         _gateway = gateway ?? throw new ArgumentNullException(nameof(gateway));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _state = state ?? throw new ArgumentNullException(nameof(state));
+        _flashProvider = flashProvider;
 
         // Start from the application's configured JsonSerializerOptions, then ensure
         // camelCase and cycle-handling defaults that Inertia.js requires.
@@ -146,7 +149,9 @@ internal class ResponseFactory : IResponseFactory
             _encryptHistory ?? _options.Value.EncryptHistory,
             _clearHistory,
             _state,
-            _jsonOptions);
+            _jsonOptions,
+            FragmentPreservation.Consume(_contextAccessor.HttpContext),
+            _flashProvider);
     }
     
     public IResult RenderResult(string component, object? props = null)

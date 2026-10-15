@@ -23,7 +23,9 @@ public class Response : IActionResult, IResult
     private readonly string? _version;
     private readonly bool _encryptHistory;
     private readonly bool _clearHistory;
+    private readonly bool _preserveFragment;
     private readonly InertiaState _state;
+    private readonly IInertiaFlashProvider? _flashProvider;
     private readonly JsonSerializerOptions _jsonOptions;
 
     private ActionContext? _context;
@@ -47,7 +49,9 @@ public class Response : IActionResult, IResult
         bool encryptHistory,
         bool clearHistory,
         InertiaState state,
-        JsonSerializerOptions jsonOptions)
+        JsonSerializerOptions jsonOptions,
+        bool preserveFragment = false,
+        IInertiaFlashProvider? flashProvider = null)
     {
         _component = component;
         _props = props;
@@ -57,6 +61,8 @@ public class Response : IActionResult, IResult
         _clearHistory = clearHistory;
         _state = state ?? throw new ArgumentNullException(nameof(state));
         _jsonOptions = jsonOptions ?? throw new ArgumentNullException(nameof(jsonOptions));
+        _preserveFragment = preserveFragment;
+        _flashProvider = flashProvider;
     }
 
     /// <summary>
@@ -129,6 +135,8 @@ public class Response : IActionResult, IResult
             Props = props,
             EncryptHistory = _encryptHistory,
             ClearHistory = _clearHistory,
+            PreserveFragment = _preserveFragment,
+            SharedProps = CollectSharedProps(),
             MergeProps = _mergeProps.Count > 0 ? _mergeProps : null,
             PrependProps = _prependProps.Count > 0 ? _prependProps : null,
             DeepMergeProps = _deepMergeProps.Count > 0 ? _deepMergeProps : null,
@@ -203,22 +211,54 @@ public class Response : IActionResult, IResult
     }
 
     /// <summary>
-    /// Resolve flash props stored in InertiaState.
-    /// Flash props are merged after shared props but before component props.
+    /// Resolve flash props. Persisted flash (from the previous request, via the flash
+    /// provider) and current-request flash (<see cref="InertiaState.FlashProps"/>) are
+    /// merged after shared props. Prefetch requests do not consume persisted flash.
     /// </summary>
     private Dictionary<string, object?> ResolveFlashProps(Dictionary<string, object?> props)
     {
-        if (_state.FlashProps.Count == 0)
+        var persisted = _flashProvider?.Pull() ?? EmptyProps;
+        var current = _state.FlashProps;
+
+        if (persisted.Count == 0 && current.Count == 0)
             return props;
 
-        var result = new Dictionary<string, object?>(props.Count + _state.FlashProps.Count);
+        var result = new Dictionary<string, object?>(props.Count + persisted.Count + current.Count);
         foreach (var (key, value) in props)
             result[key] = value;
 
-        foreach (var (key, value) in _state.FlashProps)
+        foreach (var (key, value) in persisted)
+            result[key] = value;
+
+        foreach (var (key, value) in current)
             result[key] = value;
 
         return result;
+    }
+
+    private static readonly IReadOnlyDictionary<string, object?> EmptyProps =
+        new Dictionary<string, object?>();
+
+    /// <summary>
+    /// The top-level keys registered via <c>Inertia.Share</c> (global + request),
+    /// used by the client to carry shared props during instant visits.
+    /// </summary>
+    private List<string>? CollectSharedProps()
+    {
+        var globalShared = Inertia.GetSharedData();
+        var requestShared = _state.SharedProps;
+
+        if (globalShared.Count == 0 && requestShared.Count == 0)
+            return null;
+
+        var keys = new List<string>(globalShared.Keys);
+        foreach (var key in requestShared.Keys)
+        {
+            if (!keys.Contains(key))
+                keys.Add(key);
+        }
+
+        return keys;
     }
 
     /// <summary>

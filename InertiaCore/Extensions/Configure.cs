@@ -48,11 +48,14 @@ public static class Configure
             var resolver = context.RequestServices.GetRequiredService<IInertiaVersionResolver>();
             var serverVersion = resolver.GetVersion();
 
+            // Per the protocol, only GET requests receive the mismatch 409; non-GET
+            // requests proceed (the subsequent GET redirect may still 409).
             if (!string.IsNullOrEmpty(serverVersion)
                 && context.IsInertiaRequest()
+                && HttpMethods.IsGet(context.Request.Method)
                 && context.Request.Headers[InertiaHeader.Version] != serverVersion)
             {
-                await OnVersionChange(context);
+                await OnVersionChange(context, serverVersion);
                 return;
             }
             await next();
@@ -75,6 +78,9 @@ public static class Configure
         services.AddScoped<IErrorBagService, ErrorBagService>();
         services.AddScoped<InertiaValidationFilter>();
         services.AddScoped<InertiaPrecognitionFilter>();
+
+        // Flash persistence across requests (TempData-backed by default).
+        services.TryAddScoped<IInertiaFlashProvider, InertiaFlashProvider>();
 
         // TryAddScoped so applications (and the validation epic) can replace the
         // default DataAnnotations-based validator with their own implementation.
@@ -143,8 +149,11 @@ public static class Configure
         return services;
     }
 
-    private static async Task OnVersionChange(HttpContext context)
+    private static async Task OnVersionChange(HttpContext context, string serverVersion)
     {
+        // Reflash so flash data and validation errors survive the follow-up reload.
+        context.RequestServices.GetService<IInertiaFlashProvider>()?.Reflash();
+
         // TempData is MVC-only; Minimal API hosts do not register it.
         var tempDataFactory = context.RequestServices.GetService<ITempDataDictionaryFactory>();
         if (tempDataFactory != null)
@@ -154,6 +163,7 @@ public static class Configure
         }
 
         context.Response.Headers.Override(InertiaHeader.Location, context.RequestedLocation());
+        context.Response.Headers.Override(InertiaHeader.Version, serverVersion);
         context.Response.StatusCode = (int)HttpStatusCode.Conflict;
 
         await context.Response.CompleteAsync();

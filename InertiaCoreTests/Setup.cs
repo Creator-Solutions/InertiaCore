@@ -53,6 +53,7 @@ public partial class Tests
     {
         var request = new Mock<HttpRequest>();
         request.SetupGet(r => r.Headers).Returns(headers ?? new HeaderDictionary());
+        request.SetupProperty(r => r.Method);
 
         var response = new Mock<HttpResponse>();
         response.SetupGet(r => r.Headers).Returns(new HeaderDictionary());
@@ -86,6 +87,7 @@ public partial class Tests
     {
         var request = new Mock<HttpRequest>();
         request.SetupGet(r => r.Headers).Returns(headers ?? new HeaderDictionary());
+        request.SetupProperty(r => r.Method);
 
         var response = new Mock<HttpResponse>();
         response.SetupGet(r => r.Headers).Returns(new HeaderDictionary());

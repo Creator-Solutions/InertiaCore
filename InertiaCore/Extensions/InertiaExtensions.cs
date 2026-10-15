@@ -48,6 +48,12 @@ internal static class InertiaExtensions
         context.Request.Headers[InertiaHeader.Precognition] == "true";
 
     /// <summary>
+    /// Whether this is a prefetch request (the client sent <c>Purpose: prefetch</c>).
+    /// </summary>
+    internal static bool IsPrefetchRequest(this HttpContext context) =>
+        context.Request.Headers[InertiaHeader.Purpose] == "prefetch";
+
+    /// <summary>
     /// The field names supplied in the <c>Precognition-Validate-Only</c> header.
     /// Returns an empty set when the header is absent or blank (meaning: validate all
     /// fields). Matching is case-insensitive.

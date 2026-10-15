@@ -1,6 +1,7 @@
 using InertiaCore.Extensions;
 using InertiaCore.Services;
 using InertiaCore.Services.Version;
+using InertiaCore.Utils;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -59,7 +60,7 @@ public class InertiaMiddleware
                 context.Response.StatusCode = isNonGet ? 303 : 302;
                 context.Response.Headers["Location"] = backUrl;
             }
-            else if (isInertiaRequest || context.Items.ContainsKey("InertiaResponse"))
+            else if ((isInertiaRequest || context.Items.ContainsKey("InertiaResponse")) && !IsControl409(context))
             {
                 context.Response.Headers["X-Inertia"] = "true";
                 context.Response.Headers["X-Inertia-Version"] = currentVersion;
@@ -68,6 +69,41 @@ public class InertiaMiddleware
         });
 
         await _next(context);
+
+        HandleFragmentRedirect(context);
+    }
+
+    /// <summary>
+    /// A control response (external location or fragment redirect) carries no
+    /// <c>X-Inertia</c> header, since it instructs the client to navigate rather than
+    /// render a page.
+    /// </summary>
+    private static bool IsControl409(HttpContext context) =>
+        context.Response.StatusCode == StatusCodes.Status409Conflict
+        && (context.Response.Headers.ContainsKey(InertiaHeader.Location)
+            || context.Response.Headers.ContainsKey(InertiaHeader.Redirect));
+
+    /// <summary>
+    /// Converts a non-prefetch Inertia redirect whose target contains a URL fragment
+    /// into a <c>409</c> carrying <c>X-Inertia-Redirect</c>, so the client performs a
+    /// fresh Inertia GET to the fragment target instead of a full-page reload.
+    /// </summary>
+    private static void HandleFragmentRedirect(HttpContext context)
+    {
+        if (!context.IsInertiaRequest() || context.IsPrefetchRequest())
+            return;
+
+        var status = context.Response.StatusCode;
+        if (status < 300 || status >= 400)
+            return;
+
+        var location = context.Response.Headers["Location"].ToString();
+        if (string.IsNullOrEmpty(location) || !location.Contains('#'))
+            return;
+
+        context.Response.Headers.Remove("Location");
+        context.Response.Headers[InertiaHeader.Redirect] = location;
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
     }
 
     /// <summary>
