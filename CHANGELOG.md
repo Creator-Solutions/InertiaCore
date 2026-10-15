@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased — Protocol Extras (IN-53)
+
+Adds the remaining small Inertia protocol features: history-field serialization,
+fragment redirects, prefetch detection, shared-props metadata, flash persistence and
+full version-`409` compliance.
+
+### Added
+
+- **History fields.** `encryptHistory` and `clearHistory` are serialized into the page
+  object when set via `Inertia.EncryptHistory()` / `Inertia.ClearHistory()` (they were
+  previously omitted).
+- **Fragment redirects.** A non-prefetch redirect whose `Location` contains a URL
+  fragment now returns `409 Conflict` with `X-Inertia-Redirect` (the full URL), handled
+  centrally for MVC and Minimal APIs.
+- **`preserveFragment`.** `HttpContext.PreserveInertiaFragment()` carries the original
+  request's fragment across an ordinary redirect; the target page object emits
+  `preserveFragment: true`.
+- **Prefetch detection.** `HttpContext.IsInertiaPrefetch()` (`Purpose: prefetch`).
+- **`sharedProps` metadata.** Top-level `Inertia.Share` keys are emitted as
+  `sharedProps` for instant visits.
+- **`IInertiaFlashProvider`** (default `InertiaFlashProvider`, TempData-backed) with a
+  `TryAddScoped` registration so a custom flash store can replace it.
+- `InertiaHeader.Purpose` and `InertiaHeader.Redirect` constants.
+
+### Changed
+
+- **Version mismatch is now `GET`-only** (matching the Inertia protocol and Laravel).
+  Non-`GET` requests proceed instead of receiving a `409`; the `409` also echoes
+  `X-Inertia-Version` and reflashes flash/errors for the follow-up request.
+- **Control `409` responses no longer include `X-Inertia`** (per the protocol).
+- **Flash is persisted for the next request** through `IInertiaFlashProvider`, so flash
+  set before a redirect is shown on the target page. Previously flash only appeared on
+  the current request. Prefetch requests do not consume it.
+
+---
+
 ## Unreleased — Precognition (IN-52)
 
 Adds support for Inertia.js Precognition: real-time, server-side form validation
