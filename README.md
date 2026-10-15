@@ -725,6 +725,38 @@ builder.Services.AddInertia(options =>
 });
 ```
 
+### Typed props (`Render<T>`)
+
+A props record can be the page contract: annotate it with `[InertiaPage]` and render
+it by type, so callers never type the component string:
+
+```csharp
+[InertiaPage("Users/Index")]
+public sealed record UsersIndexProps(IReadOnlyList<UserDto> Users, Pagination Page);
+
+public IActionResult Index()
+{
+    var props = new UsersIndexProps(users, pagination);
+    return Inertia.Render(props); // resolves the component "Users/Index" from the type
+}
+```
+
+The generator emits a type-to-component table (a dictionary keyed by `Type`, no
+runtime reflection) alongside the constants, and registers it at startup. `Render<T>`
+returns a page object identical to `Render("Users/Index", props)`.
+
+- If the type has no `[InertiaPage]` attribute, `Render<T>` is a compile-time error
+  (`INERTIA006`) and throws `InvalidOperationException` at runtime.
+- Two types declaring the same component name is a compile-time error (`INERTIA005`).
+- A type with **multiple** `[InertiaPage]` attributes (for example a controller) has no
+  unambiguous mapping, so it is left out of the type table and `Render<T>` throws —
+  use the string overload for those.
+- Wrapper members (`DeferredProp`, `LazyProp`, `AlwaysProp`, `MergeProp`, `OnceProp`,
+  `ScrollProp`) are allowed on the props record and keep their behaviour
+  (`[Deferred]`/`[Lazy]` resolve on partial reloads, `Always` on every response).
+
+The existing `Render(string component, props)` overloads are unchanged.
+
 ---
 
 # Installation
