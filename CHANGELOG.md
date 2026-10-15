@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased — Precognition (IN-52)
+
+Adds support for Inertia.js Precognition: real-time, server-side form validation
+without running the endpoint. No breaking changes.
+
+### Added
+
+- **Precognition request detection.** Requests carrying `Precognition: true` are
+  detected via `InertiaHeader.Precognition`, and the `Precognition-Validate-Only`
+  header limits the returned errors to the listed fields.
+- **MVC support.** `InertiaPrecognitionFilter` validates `ModelState`, records the
+  errors in the Inertia error bag, and short-circuits with `204` (valid) or `422`
+  (invalid) before the action runs. It is registered globally by `AddInertia()` and
+  runs before MVC's automatic `400`-on-invalid-model filter.
+- **Minimal API support.** `InertiaPrecognitionEndpointFilter` (enable per endpoint
+  with `WithInertiaPrecognition()`) validates the bound arguments and returns
+  `204`/`422` without invoking the handler. Endpoint filters run after argument
+  binding, so keep side effects inside the handler.
+- **Shared validation abstraction.** `IInertiaRequestValidator` with a default
+  `DataAnnotationsRequestValidator`; replace the registration to integrate a
+  different validation engine.
+- Precognition responses set `Precognition: true` (and `Precognition-Success: true`
+  on success) and append `Vary: Precognition`. The `422` body uses the same
+  `errors` shape as the Inertia `errors` prop (flattened default bag, named bag
+  nested under its name).
+- `InertiaHeader.Precognition`, `InertiaHeader.PrecognitionValidateOnly` and
+  `InertiaHeader.PrecognitionSuccess` constants.
+
+---
+
 ## v0.3.0
 
 Adds Inertia's prop-merging, infinite-scroll, deferred, once and rescued prop
