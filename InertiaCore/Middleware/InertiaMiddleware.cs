@@ -47,7 +47,11 @@ public class InertiaMiddleware
             var isInertiaRequest = context.IsInertiaRequest();
             var isInertiaResponse = context.Items.ContainsKey("InertiaResponse") || context.Response.Headers.ContainsKey("X-Inertia");
 
-            if (isInertiaRequest && !isInertiaResponse && IsEmptyResponse(context))
+            // Precognition responses are intentionally empty (204) on success and must
+            // not be converted into the empty-response redirect.
+            var isPrecognition = context.IsPrecognitionRequest();
+
+            if (isInertiaRequest && !isInertiaResponse && !isPrecognition && IsEmptyResponse(context))
             {
                 var backUrl = GetSafeBackUrl(context);
 

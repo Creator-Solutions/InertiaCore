@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
 using InertiaCore.Props;
@@ -44,8 +45,35 @@ app.MapGet("/rescue", async (IInertia inertia) =>
         Other = "ok"
     }));
 
+app.MapPost("/precognition", (PrecognitionInput input) =>
+{
+    PrecognitionProbe.HandlerRuns++;
+    // Text (not JSON) so the test host does not exercise the framework JSON pipe
+    // path, which is unrelated to Precognition.
+    return Results.Text("ok");
+}).WithInertiaPrecognition();
+
 app.Run();
 
 public partial class Program
 {
+}
+
+/// <summary>Model used by the Precognition Minimal API integration tests.</summary>
+public sealed class PrecognitionInput
+{
+    [Required]
+    public string? Name { get; set; }
+
+    [Range(1, 120)]
+    public int Age { get; set; }
+
+    [EmailAddress]
+    public string? Email { get; set; }
+}
+
+/// <summary>Tracks how often the precognition test endpoint handler executed.</summary>
+public static class PrecognitionProbe
+{
+    public static int HandlerRuns;
 }

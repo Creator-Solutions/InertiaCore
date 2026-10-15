@@ -21,4 +21,13 @@ public static class InertiaHeader
     public const string InfiniteScrollMergeIntent = "X-Inertia-Infinite-Scroll-Merge-Intent";
 
     public const string ExceptOnceProps = "X-Inertia-Except-Once-Props";
+
+    /// <summary>Request/response header indicating a Precognition validation request.</summary>
+    public const string Precognition = "Precognition";
+
+    /// <summary>Request header listing the comma-separated fields to validate.</summary>
+    public const string PrecognitionValidateOnly = "Precognition-Validate-Only";
+
+    /// <summary>Response header set to <c>true</c> when precognitive validation passes.</summary>
+    public const string PrecognitionSuccess = "Precognition-Success";
 }
