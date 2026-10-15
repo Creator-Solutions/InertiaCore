@@ -112,6 +112,62 @@ Example:
 
 ---
 
+## CSRF / Antiforgery
+
+Inertia sends every visit as an `XMLHttpRequest`/`fetch` call, so requests are not
+submitted as HTML forms and ASP.NET Core's automatic form-field antiforgery no
+longer sees a hidden field. **The adapter does not wire up CSRF protection for
+you** — you must do it explicitly.
+
+ASP.NET Core's antiforgery service issues a request token and validates it from a
+request header. Configure the header name to the one your frontend will send and
+expose the token to the page (for example as a shared prop):
+
+```csharp
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    // Inertia's Laravel-style convention uses an XSRF-TOKEN cookie plus an
+    // X-XSRF-TOKEN header. Either naming works; the cookie must stay readable by
+    // JavaScript, so do not set HttpOnly on it.
+    options.Cookie.Name = "XSRF-TOKEN";
+    options.Cookie.HttpOnly = false;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
+
+var app = builder.Build();
+app.UseInertia();
+
+app.Use(async (context, next) =>
+{
+    var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+    var tokens = antiforgery.GetAndStoreTokens(context);
+    Inertia.Share("csrfToken", tokens.RequestToken);
+    await next();
+});
+```
+
+Send the token back on every mutating request. With Inertia's `XSRF-TOKEN` cookie /
+`X-XSRF-TOKEN` header convention, set `options.HeaderName = "X-XSRF-TOKEN"` and the
+Inertia client will attach the cookie value automatically; otherwise set the header
+from your HTTP client:
+
+```js
+import axios from "axios";
+
+axios.defaults.headers.common["X-CSRF-TOKEN"] =
+  window.initialPage.props.csrfToken;
+```
+
+Finally, validate the token server-side on every `POST`/`PUT`/`PATCH`/`DELETE`
+(for example with a global `AutoValidateAntiforgeryToken` filter, an endpoint
+filter, or `IAntiforgery.ValidateRequestAsync`). Keep `Secure` on in production and
+set `SameSite` appropriately; only the readable XSRF token cookie should omit
+`HttpOnly`.
+
+---
+
 ## Shared Data
 
 Share data across Inertia responses.
@@ -340,7 +396,9 @@ builder.Services.AddInertia(options =>
 
 ## Vite Integration
 
-Includes helpers for Vite-powered applications.
+Includes helpers for Vite-powered applications with feature parity to Laravel's
+`@vite` directive: hot-module-reload detection, manifest resolution, module
+preloading, CSS handling, CSP nonces, integrity hashes and prefetching.
 
 Register:
 
@@ -354,11 +412,66 @@ Use in your layout:
 @Vite.Input("src/main.ts")
 ```
 
+Multiple entry points:
+
+```html
+@Vite.Input("src/main.ts", "src/admin.ts")
+```
+
+Async rendering (uses the cached manifest read):
+
+```html
+@await Vite.InputAsync("src/main.ts")
+```
+
 React HMR support:
 
 ```html
 @Vite.ReactRefresh()
 ```
+
+Resolve a manifest entry to its public URL, or read its content:
+
+```html
+<img src="@Vite.Asset("src/logo.svg")" />
+```
+
+```csharp
+var svg = Vite.Content("src/logo.svg");
+```
+
+### Configuration
+
+```csharp
+builder.Services.AddViteHelper(options =>
+{
+    options.HotFile = "hot";
+    options.BuildDirectory = "build";
+    options.ManifestFilename = "manifest.json";
+    options.PublicDirectory = "wwwroot";
+
+    // CSP nonce — static, or resolved per request.
+    options.CspNonce = "nonce-value";
+    options.NonceResolver = () => httpContextAccessor.HttpContext?.Items["csp-nonce"] as string;
+
+    // Subresource integrity (null disables it).
+    options.IntegrityKey = "integrity";
+
+    // Prefetch dynamic imports after load.
+    options.PrefetchStrategy = PrefetchStrategy.Aggressive;
+    options.PrefetchConcurrency = 3;   // waterfall only
+    options.PrefetchEvent = "load";
+
+    // Append custom attributes to generated tags.
+    options.ScriptTagAttributes.Add((src, url, chunk) =>
+        new Dictionary<string, object?> { ["defer"] = true });
+});
+```
+
+Each rendered entry point produces a module preload link plus its script tag,
+walks manifest `imports` recursively, and emits stylesheet preloads before
+scripts. `Vite.GetManifestHash()` returns `null` while running hot so the asset
+version does not change during development.
 
 ---
 
@@ -403,6 +516,24 @@ Supports:
 - DELETE redirects
 
 Non-GET requests automatically use `303 See Other`.
+
+> **Warning:** `Inertia.Location(url)` and the redirect helpers do **not** validate
+> the destination. Passing a user-supplied value straight through creates an open
+> redirect. Validate the target before redirecting — for example, only accept local
+> URLs, or an allow-listed set of hosts:
+
+```csharp
+public IActionResult AfterLogin(string? returnUrl)
+{
+    if (Url.IsLocalUrl(returnUrl))
+        return Redirect(returnUrl!);
+
+    return RedirectToAction("Index", "Home");
+}
+```
+
+Use `Inertia.Location(url)` only when you intend a full-page, cross-origin redirect
+(for example to an external OAuth provider) and the URL is a trusted constant.
 
 ---
 

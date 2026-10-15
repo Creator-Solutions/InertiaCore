@@ -176,6 +176,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Data", "other" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
@@ -207,6 +208,7 @@ public partial class Tests
         var headers = new HeaderDictionary
         {
             { "X-Inertia-Partial-Data", "posts" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 

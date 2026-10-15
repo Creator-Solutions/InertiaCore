@@ -8,6 +8,19 @@ public class InertiaOptions
 
     public bool SsrEnabled { get; set; } = false;
     public string SsrUrl { get; set; } = "http://127.0.0.1:13714/render";
+
+    /// <summary>
+    /// Timeout applied to a single SSR render request. When the SSR server does not
+    /// respond in time the response falls back to client-side rendering.
+    /// </summary>
+    public TimeSpan SsrTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Maximum size, in bytes, of an SSR response body that will be read and parsed.
+    /// Larger responses are treated as a failure and fall back to client-side rendering.
+    /// </summary>
+    public long SsrMaxResponseBytes { get; set; } = 10 * 1024 * 1024;
+
     public bool EncryptHistory { get; set; } = false;
 
     /// <summary>

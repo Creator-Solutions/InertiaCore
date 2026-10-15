@@ -1,14 +1,19 @@
 # Changelog
 
-## v0.3.0 — Merge, Scroll, Deferred, Once & Rescued Props (IN-49 – IN-51)
+## v0.3.0
 
-Adds support for Inertia's prop-merging, infinite-scroll, deferred, once and
-rescued prop protocols. No breaking changes.
+Adds Inertia's prop-merging, infinite-scroll, deferred, once and rescued prop
+protocols; brings the Vite helper to feature parity with Laravel's
+`Illuminate\Foundation\Vite` (recursive import resolution, preload tags, CSP
+nonces, integrity hashes, tag attribute resolvers, prefetch strategies and a
+public async/hot/asset API); and hardens the adapter following an internal
+security audit. No public API is removed, but some behaviour changed — see below.
 
 ### Added
 
-- `Inertia.Merge(value)` / `inertia.Merge(...)` and `Inertia.DeepMerge(value)` /
-  `inertia.DeepMerge(...)` create merge props. Both accept a value or a sync/async factory.
+- **Merge props.** `Inertia.Merge(value)` / `inertia.Merge(...)` and
+  `Inertia.DeepMerge(value)` / `inertia.DeepMerge(...)` create merge props. Both
+  accept a value or a sync/async factory.
 - Fluent modifiers on every prop wrapper: `.Merge()`, `.DeepMerge()`, `.Prepend()`,
   `.Append(params string[])`, `.Prepend(params string[])` and `.MatchOn(params string[])`.
   This allows composition such as `_inertia.Defer(() => LoadUsers()).Merge()`.
@@ -21,23 +26,86 @@ rescued prop protocols. No breaking changes.
   partial reload only advertises merge props it actually returned.
 - Metadata keys are camelCased the same way as prop names (`TestMerge` → `testMerge`,
   `MatchOn("data.id")` → `posts.data.id`).
-- `Inertia.Scroll(items, metadata)` / `inertia.Scroll(...)` configure a paginated prop
-  for infinite scroll. `ScrollMetadata` (a plain public record with `PageName`,
-  `PreviousPage`, `NextPage`, `CurrentPage`) is emitted under `scrollProps`, and the
-  inner array (`data` by default) is labelled for append or prepend merge based on the
-  `X-Inertia-Infinite-Scroll-Merge-Intent` request header. `X-Inertia-Reset` sets the
-  entry's `reset` flag. Null tokens are serialized as `null`.
-- `Defer(callback, group)` / `Defer(callback, group, rescue)` group deferred props and
-  announce them under `deferredProps`, so the client fetches groups in parallel. Callbacks
-  are never invoked for props that are excluded by a partial reload.
-- `Inertia.Once(callback)` / `inertia.Once(...)` resolve a prop a single time and emit
-  `onceProps` metadata (`prop` + `expiresAt`). Requests that already hold a once prop
+- **Infinite scroll.** `Inertia.Scroll(items, metadata)` / `inertia.Scroll(...)` configure a
+  paginated prop for infinite scroll. `ScrollMetadata` (a plain public record with
+  `PageName`, `PreviousPage`, `NextPage`, `CurrentPage`) is emitted under `scrollProps`, and
+  the inner array (`data` by default) is labelled for append or prepend merge based on the
+  `X-Inertia-Infinite-Scroll-Merge-Intent` request header. `X-Inertia-Reset` sets the entry's
+  `reset` flag. Null tokens are serialized as `null`.
+- **Deferred props.** `Defer(callback, group)` / `Defer(callback, group, rescue)` group
+  deferred props and announce them under `deferredProps`, so the client fetches groups in
+  parallel. Callbacks are never invoked for props that are excluded by a partial reload.
+- **Once props.** `Inertia.Once(callback)` / `inertia.Once(...)` resolve a prop a single time
+  and emit `onceProps` metadata (`prop` + `expiresAt`). Requests that already hold a once prop
   (listed in `X-Inertia-Except-Once-Props`) skip resolution. Fluent `.Once()`, `.As(key)`,
   `.Fresh()` and `.Until(...)` compose with merge, deferred and lazy props.
-- `DeferredProp.Rescue()` (and the `rescue` argument to `Defer`) rescues resolution
-  failures: the exception is logged, the value omitted, and the key reported through the
-  page object's `rescuedProps` array while the response stays `200`. Non-rescued
+- **Rescued props.** `DeferredProp.Rescue()` (and the `rescue` argument to `Defer`) rescues
+  resolution failures: the exception is logged, the value omitted, and the key reported
+  through the page object's `rescuedProps` array while the response stays `200`. Non-rescued
   exceptions still fail the request.
+- **Multiple Vite entry points.** `Vite.Input(...)` / `Vite.InputAsync(...)` and the builder
+  equivalents now accept `params string[]` and render tags for every entry point in a single call.
+- **Recursive imports and module preloading.** Manifest `imports` are walked and emitted as
+  `<link rel="modulepreload">`, and every imported chunk's `css` is emitted as a
+  `<link rel="preload" as="style">` plus its stylesheet.
+- **Asset preloading.** Every entry point and imported chunk now emits a preload tag;
+  stylesheet preloads are ordered before script preloads.
+- **CSP nonce support.** `ViteOptions.CspNonce` (static) and `ViteOptions.NonceResolver`
+  (per-request) apply a `nonce` attribute to every generated script, stylesheet and preload tag.
+- **Subresource integrity.** `ViteOptions.IntegrityKey` (default `"integrity"`, set to `null`
+  to disable) reads the hash from the manifest chunk and emits an `integrity` attribute.
+- **Tag attribute resolvers.** `ViteOptions.ScriptTagAttributes`, `StyleTagAttributes` and
+  `PreloadTagAttributes` allow appending custom attributes. A preload resolver returning
+  `null` skips the tag.
+- **Prefetch strategies.** `ViteOptions.PrefetchStrategy`
+  (`PrefetchStrategy.None` / `Waterfall` / `Aggressive`), `PrefetchConcurrency` and
+  `PrefetchEvent` render a prefetch script for manifest dynamic imports, mirroring Laravel's
+  `prefetch()`, `useWaterfallPrefetching()` and `useAggressivePrefetching()`.
+- **Public async and helper API on the `Vite` facade:** `InputAsync`, `ReactRefreshAsync`,
+  `IsRunningHot`, `Asset` and `Content`, alongside the existing `Input`, `ReactRefresh` and
+  `GetManifestHash`.
+- `InertiaOptions.SsrTimeout` and `InertiaOptions.SsrMaxResponseBytes`.
+- New `ViteChunk`, `PrefetchStrategy`, `ViteScriptTagAttributesResolver`,
+  `ViteStyleTagAttributesResolver` and `VitePreloadTagAttributesResolver` types.
+
+### Changed
+
+- **SSR failure falls back to client-side rendering.** A failed or timed-out SSR request now
+  logs a warning and renders the client-side script tag instead of throwing a 500.
+- **`AddInertiaVersion` resolvers are scoped.** `AddInertiaVersion(Func<IServiceProvider, string>)`
+  and `AddInertiaVersion<TResolver>()` now register `IInertiaVersionProvider` /
+  `IInertiaVersionResolver` as scoped (previously singleton), preventing request-scoped
+  dependencies from being shared between requests.
+- **Partial reloads require `X-Inertia: true`.** A full-page request that carries partial
+  headers is no longer treated as a partial reload.
+- **Vite prefetch event uses a JSON string literal.** The event name is emitted double-quoted
+  (`"load"`) instead of single-quoted, and nonce/attribute values are HTML-encoded. Existing
+  exact-string expectations were updated.
+- The Vite helper is no longer marked `[Obsolete]`; the sync methods remain for compatibility
+  and the async variants use cached manifest reads.
+- Generated Vite tags now use Laravel's attribute ordering (`type` before `src`, `rel` before
+  `href`) and include preload tags. Existing exact-string expectations should be updated.
+- `Vite.GetManifestHash()` now returns `null` while the dev server is running (hot), matching
+  Laravel, instead of hashing the stale manifest.
+- The CSS path detection regex is now anchored and matches Laravel's list
+  (`css|less|sass|scss|styl|stylus|pcss|postcss`).
+
+### Security
+
+- **SSR gateway hardened (SC-01/SC-14).** `Gateway` applies a timeout
+  (`InertiaOptions.SsrTimeout`, default 5 s), rejects non-2xx and oversized responses
+  (`InertiaOptions.SsrMaxResponseBytes`, default 10 MB), only accepts absolute
+  `http`/`https` SSR URLs, and guards null `head`/`body`.
+- **`X-Inertia-Location` no longer decodes the request path (SC-03).** The encoded path/query
+  is used verbatim with CR/LF stripped.
+- **Referer back-redirect hardened (SC-04).** Relative `Referer` values containing control
+  characters or whitespace, or that can normalise to a protocol-relative URL, are rejected.
+- **Page JSON escaped for the script context (SC-07).** `<`, `>`, `&`, U+2028, U+2029 and `/`
+  are escaped independently of the host's JSON encoder.
+- **Vite tag attributes encoded (SC-06).** Attribute keys/values are HTML-encoded and the
+  prefetch event is emitted as a serialized string.
+- **Vite manifest hash cached (SC-10).** `GetManifestHash()` uses the manifest cache instead
+  of re-reading and hashing the file on every call.
 
 ---
 
@@ -189,7 +257,7 @@ Only `component`, `props`, `url`, and `version` are serialized — exactly what 
 
 ---
 
-### What's Next (v0.3.0+)
+### What's Next
 
 - Additional Inertia protocol coverage
 - Improved developer tooling

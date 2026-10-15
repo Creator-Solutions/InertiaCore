@@ -143,7 +143,7 @@ public static class Configure
             if (tempData.Any()) tempData.Keep();
         }
 
-        context.Response.Headers.Override(InertiaHeader.Location, context.RequestedUri());
+        context.Response.Headers.Override(InertiaHeader.Location, context.RequestedLocation());
         context.Response.StatusCode = (int)HttpStatusCode.Conflict;
 
         await context.Response.CompleteAsync();

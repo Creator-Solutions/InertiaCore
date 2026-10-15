@@ -9,11 +9,29 @@ namespace InertiaCore.Extensions;
 
 internal static class InertiaExtensions
 {
+    /// <summary>
+    /// Whether this is an Inertia partial reload for the given component. A partial
+    /// reload is only valid for an Inertia request (the client always sends
+    /// <c>X-Inertia: true</c> alongside the partial headers); requiring it stops a
+    /// plain full-page request from being treated as a partial reload.
+    /// </summary>
     internal static bool IsInertiaPartialComponent(this ActionContext context, string component) =>
-        context.HttpContext.Request.Headers[InertiaHeader.PartialComponent] == component;
+        context.HttpContext.IsInertiaRequest()
+        && context.HttpContext.Request.Headers[InertiaHeader.PartialComponent] == component;
 
     internal static string RequestedUri(this HttpContext context) =>
         Uri.UnescapeDataString(context.Request.GetEncodedPathAndQuery());
+
+    /// <summary>
+    /// The request path and query exactly as they were received (still percent-encoded),
+    /// with any CR/LF stripped as a defence against header injection. Use this for
+    /// values written to response headers such as <c>X-Inertia-Location</c>; use
+    /// <see cref="RequestedUri"/> only where a decoded URL is required.
+    /// </summary>
+    internal static string RequestedLocation(this HttpContext context) =>
+        context.Request.GetEncodedPathAndQuery()
+            .Replace("\r", string.Empty)
+            .Replace("\n", string.Empty);
 
     internal static string RequestedUri(this ActionContext context) => context.HttpContext.RequestedUri();
     

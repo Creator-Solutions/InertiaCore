@@ -83,6 +83,7 @@ public partial class Tests
         {
             { "X-Inertia-Except-Once-Props", "plans" },
             { "X-Inertia-Partial-Data", "plans" },
+            { "X-Inertia", "true" },
             { "X-Inertia-Partial-Component", "Test/Page" }
         };
 
