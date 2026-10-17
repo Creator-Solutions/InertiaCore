@@ -40,6 +40,13 @@ jobs:
         --assembly InertiaCoreTests.TestApp/bin/Debug/net10.0/InertiaCoreTests.TestApp.dll
         --output InertiaCoreTests/Golden/inertia.generated.d.ts
         --check
+    - name: Check generated routes.ts
+      run: >-
+        dotnet run --project InertiaCore.TypeGen/InertiaCore.TypeGen.csproj
+        --framework net8.0 -c Debug -- routes
+        --input InertiaCoreTests/Golden/routes.sample.json
+        --output InertiaCoreTests/Golden/routes.sample.ts
+        --check
 
   typescript:
 
@@ -68,6 +75,13 @@ jobs:
         --assembly InertiaCoreTests.TestApp/bin/Debug/net10.0/InertiaCoreTests.TestApp.dll
         --output samples/react/types/inertia.generated.d.ts
         --emit-react-helper
+    - name: Generate typed routes for the sample
+      run: >-
+        dotnet run --project InertiaCore.TypeGen/InertiaCore.TypeGen.csproj
+        --framework net8.0 -c Debug -- routes
+        --input InertiaCoreTests/Golden/routes.sample.json
+        --output samples/react/types/routes.ts
+        --check
     - name: Install sample dependencies
       run: npm ci
       working-directory: samples/react
@@ -85,3 +99,15 @@ jobs:
         fi
         echo "tsc failed as expected:"
         cat /tmp/tsc-negative.log
+    - name: Unknown route name breaks consumers (negative check)
+      working-directory: samples/react
+      run: |
+        printf "import { route } from './types/routes';\nroute('nope.nope');\nroute('users.show');\n" > negative-routes.ts
+        if npx tsc --noEmit >/tmp/tsc-routes-negative.log 2>&1; then
+          echo "expected tsc to fail for unknown/missing route params, but it passed"
+          cat /tmp/tsc-routes-negative.log
+          exit 1
+        fi
+        rm negative-routes.ts
+        echo "tsc failed as expected:"
+        cat /tmp/tsc-routes-negative.log

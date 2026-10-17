@@ -116,6 +116,9 @@ internal sealed class CliOptions
 
         Usage:
           inertiatsgen --assembly <path.dll> [options]
+          inertiatsgen routes --input <routes.json> [options]
+
+        See `inertiatsgen routes --help` for the route-declaration subcommand.
 
         Options:
           --assembly <path>    Compiled assembly to read. Required.
