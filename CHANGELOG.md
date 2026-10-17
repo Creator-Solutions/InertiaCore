@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased — TypeScript Declarations (IN-55)
+
+Adds `InertiaCore.TypeGen`, a dotnet tool that reads a compiled assembly and writes
+TypeScript declarations for every `[InertiaPage]` type and the types those props
+reference, catching contract drift at build time. No breaking change to existing
+public API.
+
+### Added
+
+- **`InertiaCore.TypeGen` dotnet tool** (`inertiatsgen`). Loads the target assembly
+  with `MetadataLoadContext` (user code is never executed) and emits TypeScript
+  interfaces plus an `InertiaPageProps` component-to-props map.
+- **Options:** `--assembly`, `--output` (default
+  `Client/types/inertia.generated.d.ts`), `--reference`, `--enum-mode`
+  (`auto`/`string`/`number`), `--no-camel-case`, `--check` and `--watch`.
+- **Serializer-aware mapping:** camelCase naming, `[JsonPropertyName]`,
+  `[JsonIgnore]` (including `WhenWritingNull`/`WhenWritingDefault` becoming optional
+  properties), `[JsonExtensionData]`, and enum string/number unions driven by
+  `[JsonConverter]`. `Lazy`, `Defer` and `Optional` wrapper members become optional.
+- **Deterministic, auto-generated header**, cyclic-reference safe, with `--check`
+  for CI gating.
+- **Golden-file tests** plus unit tests for the mapping rules; a `WebApplicationFactory`
+  integration test asserts the sample endpoint's JSON matches the declared shape.
+
+### Notes
+
+- The generator is a separate tool package; the `InertiaCore.AspNetCore` package is
+  unchanged and still ships the source generator exactly once.
+
+---
+
 ## Unreleased — Typed Page Contracts (IN-54)
 
 Makes a props record the page contract: a type annotated with `[InertiaPage]` can be

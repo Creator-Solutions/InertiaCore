@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCoreTests", "Inertia
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCoreTests.TestApp", "InertiaCoreTests.TestApp\InertiaCoreTests.TestApp.csproj", "{4E0F3699-07CD-47FD-A797-66E3306FBCDA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCore.TypeGen", "InertiaCore.TypeGen\InertiaCore.TypeGen.csproj", "{AC0DBD13-AE0A-4E89-A4CD-48FDEABC97EB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,6 +32,10 @@ Global
 		{4E0F3699-07CD-47FD-A797-66E3306FBCDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4E0F3699-07CD-47FD-A797-66E3306FBCDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4E0F3699-07CD-47FD-A797-66E3306FBCDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC0DBD13-AE0A-4E89-A4CD-48FDEABC97EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC0DBD13-AE0A-4E89-A4CD-48FDEABC97EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC0DBD13-AE0A-4E89-A4CD-48FDEABC97EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC0DBD13-AE0A-4E89-A4CD-48FDEABC97EB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

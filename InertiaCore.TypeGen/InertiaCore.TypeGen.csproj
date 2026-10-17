@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>12</LangVersion>
+        <RollForward>LatestMajor</RollForward>
+        <RootNamespace>InertiaCore.TypeGen</RootNamespace>
+        <AssemblyName>InertiaCore.TypeGen</AssemblyName>
+
+        <Version>0.3.0</Version>
+        <PackageId>InertiaCore.TypeGen</PackageId>
+        <Authors>Creator-Solutions</Authors>
+        <Description>Generates TypeScript declarations for InertiaCore [InertiaPage] props.</Description>
+        <PackageProjectUrl>https://github.com/Creator-Solutions/InertiaCore</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Creator-Solutions/InertiaCore</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>Inertia,Inertiajs,ASPNet,React,TypeScript,types</PackageTags>
+
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>inertiatsgen</ToolCommandName>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="System.Reflection.MetadataLoadContext" Version="8.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="../LICENSE" Pack="true" PackagePath="" />
+        <None Include="../README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
+
+</Project>
