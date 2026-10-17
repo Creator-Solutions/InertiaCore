@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased — Typed Routes (IN-57)
+
+Generates a typed `routes.ts` module (a Ziggy-style `route()` helper) from named Minimal
+API endpoints, so the front end builds URLs from a checked API instead of string literals.
+No breaking change to existing public API (all additions are purely additive).
+
+### Added
+
+- **`MapInertiaRoutes()`** (`InertiaCore.Extensions`) — maps a Development-only endpoint
+  (default `/_inertia/routes`) that dumps every named Minimal API route as JSON. It returns
+  `404` outside the Development environment.
+- **`GetInertiaRoutes()`** — collects named `RouteEndpoint`s (via `RouteNameMetadata`) into
+  `InertiaRoute`/`InertiaRouteParameter` metadata, with route constraints, optional and
+  catch-all flags, ordered by name for deterministic output. Endpoints without a name are
+  ignored.
+- **`inertiatsgen routes`** subcommand — reads the dump (`--input`) and writes a typed
+  `routes.ts` (`--output`, default `Client/types/routes.ts`). Supports `--check` for CI.
+  The generated module exports `InertiaRouteName`, `InertiaRouteParams`, `inertiaRouteDefs`
+  and `route(name, params)`: unknown route names and missing required parameters are compile
+  errors, while extra values are emitted as a query string.
+- **`InertiaRouteUrlBuilder`** — a server-side mirror of the generated `route()` helper for
+  asserting the correct URLs in unit tests.
+
+### Notes
+
+- Two metadata sources are supported and documented in the README: the runtime
+  Development dump (used by `inertiatsgen routes`) and the startup host dump, with the
+  trade-offs of each.
+- The `InertiaCore.AspNetCore` package is unchanged and still ships the source generator
+  exactly once.
+
+---
+
 ## Unreleased — Typed Registry, React Helper & Shared Props (IN-56)
 
 Makes the generated declarations usable by the React side: the component-name map is

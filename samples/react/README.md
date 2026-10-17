@@ -17,6 +17,16 @@ dotnet run --project InertiaCore.TypeGen/InertiaCore.TypeGen.csproj --framework 
   --emit-react-helper
 ```
 
+The typed routes in `types/routes.ts` are generated from the committed route dump
+(`InertiaCoreTests/Golden/routes.sample.json`), which mirrors the Development
+`/_inertia/routes` endpoint:
+
+```bash
+dotnet run --project InertiaCore.TypeGen/InertiaCore.TypeGen.csproj --framework net8.0 -c Debug -- routes \
+  --input InertiaCoreTests/Golden/routes.sample.json \
+  --output samples/react/types/routes.ts
+```
+
 Type-check:
 
 ```bash
@@ -30,3 +40,5 @@ What the sample shows:
 - `Pages/*/Index.tsx` — page components typed with `InertiaPageProps['<Component>']`.
 - `components/SharedBanner.tsx` — the generated `usePageProps` helper, whose result
   intersects page props with `InertiaSharedProps`.
+- `routes-usage.ts` — the typed `route()` helper: known names and required parameters are
+  enforced, and unknown names or missing parameters fail the type check.

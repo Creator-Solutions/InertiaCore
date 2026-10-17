@@ -89,6 +89,26 @@ app.MapGet("/typed-sample", async (IInertia inertia) =>
     return (IResult)await inertia.Render(sample);
 });
 
+// Named Minimal API endpoints used by the IN-57 route-metadata sample and tests.
+// These mirror a small Ziggy-style API surface consumed by routes.ts.
+app.MapGet("/api/users", () => Results.Ok(new[] { "Ada", "Grace" }))
+    .WithName("users.index");
+
+app.MapGet("/api/users/{id:int}", (int id) => Results.Ok(new { id }))
+    .WithName("users.show");
+
+app.MapPut("/api/users/{id:int}", (int id) => Results.Ok(new { id }))
+    .WithName("users.update");
+
+app.MapGet("/api/users/{user:int}/posts/{post:int}", (int user, int post) => Results.Ok(new { user, post }))
+    .WithName("posts.show");
+
+app.MapGet("/api/search/{*rest}", (string? rest) => Results.Ok(new { rest }))
+    .WithName("search");
+
+// Development-only route dump consumed by `inertiatsgen routes`.
+app.MapInertiaRoutes();
+
 app.MapControllers();
 
 app.Run();
