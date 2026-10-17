@@ -26,11 +26,16 @@
     <ItemGroup>
         <ProjectReference Include="..\InertiaCore\InertiaCore.csproj"/>
         <ProjectReference Include="..\InertiaCore.SourceGenerators\InertiaCore.SourceGenerators.csproj" />
+        <ProjectReference Include="..\InertiaCore.TypeGen\InertiaCore.TypeGen.csproj" />
         <ProjectReference Include="..\InertiaCoreTests.TestApp\InertiaCoreTests.TestApp.csproj" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="Golden\**\*.d.ts" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>

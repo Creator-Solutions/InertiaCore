@@ -62,6 +62,30 @@ app.MapGet("/protocol/target", async (IInertia inertia) =>
 app.MapGet("/typed", async (IInertia inertia) =>
     (IResult)await inertia.Render(new UsersIndexProps(new[] { "Ada", "Grace" }, 1)));
 
+app.MapGet("/typed-sample", async (IInertia inertia) =>
+{
+    var sample = new TypedSampleProps(
+        new[]
+        {
+            new TypedSampleUser(
+                Guid.Empty,
+                "Ada",
+                DateTime.UnixEpoch,
+                UserRole.Admin,
+                UserStatus.Active,
+                null,
+                new[] { "founder" },
+                new Address("1 Analytical Engine Way", null),
+                new Dictionary<string, int> { ["logic"] = 10 })
+        },
+        null,
+        new[] { "label" },
+        2,
+        new[] { new TreeNode("root", Array.Empty<TreeNode>()) });
+
+    return (IResult)await inertia.Render(sample);
+});
+
 app.MapControllers();
 
 app.Run();

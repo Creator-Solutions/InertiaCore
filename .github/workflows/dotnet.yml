@@ -33,3 +33,10 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
+    - name: Check generated TypeScript declarations
+      run: >-
+        dotnet run --project InertiaCore.TypeGen/InertiaCore.TypeGen.csproj
+        --framework net8.0 -c Debug --
+        --assembly InertiaCoreTests.TestApp/bin/Debug/net10.0/InertiaCoreTests.TestApp.dll
+        --output InertiaCoreTests/Golden/inertia.generated.d.ts
+        --check

@@ -757,6 +757,81 @@ returns a page object identical to `Render("Users/Index", props)`.
 
 The existing `Render(string component, props)` overloads are unchanged.
 
+### TypeScript declarations (`InertiaCore.TypeGen`)
+
+`InertiaCore.TypeGen` is a dotnet tool that reads your compiled assembly and writes
+TypeScript declarations for every `[InertiaPage]` type and the types it references, so
+the frontend has a compile-time contract for page props. It loads the assembly with
+`MetadataLoadContext` and never executes your code.
+
+Install and run:
+
+```bash
+dotnet tool install --global InertiaCore.TypeGen
+
+inertiatsgen --assembly bin/Debug/net8.0/MyApp.dll \
+             --output Client/types/inertia.generated.d.ts
+```
+
+For a record like this:
+
+```csharp
+[InertiaPage("Users/Index")]
+public sealed record UsersIndexProps(IReadOnlyList<UserDto> Users, int Page);
+```
+
+the tool emits:
+
+```ts
+export interface UsersIndexProps {
+  users: UserDto[];
+  page: number;
+}
+
+export interface InertiaPageProps {
+  'Users/Index': UsersIndexProps;
+}
+```
+
+Options:
+
+| Option | Description |
+| --- | --- |
+| `--assembly <path>` | Compiled assembly to read. Required. |
+| `--output <path>` | Output file. Default: `Client/types/inertia.generated.d.ts`. |
+| `--reference <path>` | Additional assembly used to resolve references. Repeatable. |
+| `--enum-mode <mode>` | `auto` (default), `string` or `number`. |
+| `--no-camel-case` | Disable camelCase property naming. |
+| `--check` | Exit non-zero if the output is out of date (no write). |
+| `--watch` | Regenerate whenever the assembly changes. |
+
+Type mapping follows the InertiaCore serializer defaults:
+
+| C# | TypeScript |
+| --- | --- |
+| `string`, `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan` | `string` |
+| numeric types | `number` |
+| `bool` | `boolean` |
+| `T?` | `T \| null` |
+| `IEnumerable<T>` / `T[]` / `List<T>` | `T[]` |
+| `Dictionary<string, T>` | `Record<string, T>` |
+| enum without a string converter | numeric union (`0 \| 1`) |
+| enum with `JsonStringEnumConverter` | string-literal union (`'A' \| 'B'`) |
+| record / class | `interface` |
+
+camelCase naming, `[JsonPropertyName]` and `[JsonIgnore]` are respected. Members that
+are `Lazy`, `Defer` or `Optional` props, and members marked
+`[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]`, are emitted as
+optional properties (`name?: T`). Cyclic references are handled; output is
+deterministic so diffs stay clean.
+
+Use `--check` in CI to fail when the declarations are stale:
+
+```bash
+inertiatsgen --assembly bin/Release/net10.0/MyApp.dll \
+             --output Client/types/inertia.generated.d.ts --check
+```
+
 ---
 
 # Installation
