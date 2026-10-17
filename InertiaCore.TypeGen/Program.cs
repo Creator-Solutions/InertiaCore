@@ -145,6 +145,7 @@ internal static class Program
             AssemblyPath = options.AssemblyPath!,
             UseCamelCase = options.UseCamelCase,
             EnumMode = options.EnumMode,
+            EmitReactHelper = options.EmitReactHelper,
         };
 
         foreach (string reference in options.ReferencePaths)

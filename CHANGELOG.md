@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased — Typed Registry, React Helper & Shared Props (IN-56)
+
+Makes the generated declarations usable by the React side: the component-name map is
+formalised, a typed `usePageProps` helper is available behind an opt-in setting, and a
+shared props record can be declared so its shape is emitted too. No breaking change to
+existing public API (both additions are purely additive).
+
+### Added
+
+- **`[InertiaSharedProps]` attribute.** Mark the record describing your shared props and
+  the tool emits it as an `InertiaSharedProps` interface alongside the page declarations.
+  It is a code-generation marker only — continue to populate values with `Inertia.Share(...)`.
+  Multiple annotated types warn and fall back to the first (deterministic) one.
+- **React helper behind `--emit-react-helper`** (also `TypeScriptGeneratorOptions.EmitReactHelper`,
+  default `false`). When enabled, the output imports `usePage` from `@inertiajs/react` and
+  exports `usePageProps<K extends keyof InertiaPageProps>(component: K)`, returning the
+  component's props intersected with `InertiaSharedProps` when a shared record exists.
+  Projects not using React hooks are unaffected by default.
+- **`samples/react`** — a committed sample app whose `app.tsx` types the Inertia page
+  resolver with `InertiaPageProps` and whose components are typed from the registry. CI
+  regenerates the declarations, checks they compile under `tsc --strict`, and verifies that
+  renaming a props member produces a compile error in the consumer.
+
+### Notes
+
+- The `InertiaCore.AspNetCore` package is unchanged and still ships the source generator
+  exactly once.
+
+---
+
 ## Unreleased — TypeScript Declarations (IN-55)
 
 Adds `InertiaCore.TypeGen`, a dotnet tool that reads a compiled assembly and writes

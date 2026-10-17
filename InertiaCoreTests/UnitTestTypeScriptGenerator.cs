@@ -396,4 +396,189 @@ public class UnitTestTypeScriptGenerator
             () => new TypeScriptDeclarationGenerator().Generate(options),
             Throws.TypeOf<ArgumentException>());
     }
+
+    [Test]
+    [Description("A type marked [InertiaSharedProps] is emitted as an InertiaSharedProps interface.")]
+    public void EmitsSharedPropsInterface()
+    {
+        var source = """
+            using System.Collections.Generic;
+            using InertiaCore;
+
+            namespace Shared;
+
+            [InertiaSharedProps]
+            public sealed record SharedProps(string AppName, IReadOnlyList<string> Flash);
+
+            [InertiaPage("Shared/Index")]
+            public sealed record SharedPageProps(string Name);
+            """;
+
+        GenerationResult result = Generate(source);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Content, Does.Contain("export interface InertiaSharedProps {"));
+            Assert.That(result.Content, Does.Contain("appName: string;"));
+            Assert.That(result.Content, Does.Contain("flash: string[];"));
+            Assert.That(result.Diagnostics, Is.Empty);
+        });
+    }
+
+    [Test]
+    [Description("Shared props that reference a nested record emit both interfaces.")]
+    public void SharedPropsReferencingNestedRecordEmitsBoth()
+    {
+        var source = """
+            using InertiaCore;
+
+            namespace Shared;
+
+            public sealed record Profile(string DisplayName);
+
+            [InertiaSharedProps]
+            public sealed record SharedProps(string AppName, Profile? Auth);
+
+            [InertiaPage("Shared/Index")]
+            public sealed record SharedPageProps(string Name);
+            """;
+
+        GenerationResult result = Generate(source);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Content, Does.Contain("export interface InertiaSharedProps {"));
+            Assert.That(result.Content, Does.Contain("auth: Profile | null;"));
+            Assert.That(result.Content, Does.Contain("export interface Profile {"));
+        });
+    }
+
+    [Test]
+    [Description("Without an [InertiaSharedProps] type no shared interface is emitted.")]
+    public void NoSharedPropsAttributeOmitsInterface()
+    {
+        GenerationResult result = Generate("""
+            using InertiaCore;
+            namespace NoShared;
+            [InertiaPage("NoShared/Index")]
+            public sealed record P(string Name);
+            """);
+
+        Assert.That(result.Content, Does.Not.Contain("InertiaSharedProps"));
+    }
+
+    [Test]
+    [Description("Multiple [InertiaSharedProps] types warn and pick the first deterministically.")]
+    public void MultipleSharedPropsWarnAndPickFirst()
+    {
+        var source = """
+            using InertiaCore;
+
+            namespace Shared;
+
+            [InertiaSharedProps]
+            public sealed record ZetaProps(string Z);
+
+            [InertiaSharedProps]
+            public sealed record AlphaProps(string A);
+
+            [InertiaPage("Shared/Index")]
+            public sealed record SharedPageProps(string Name);
+            """;
+
+        GenerationResult result = Generate(source);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Diagnostics, Has.Count.EqualTo(1));
+            Assert.That(result.Diagnostics[0].Severity, Is.EqualTo(GenerationSeverity.Warning));
+            Assert.That(result.Content, Does.Contain("a: string;"));
+            Assert.That(result.Content, Does.Not.Contain("z: string;"));
+        });
+    }
+
+    [Test]
+    [Description("The React helper is omitted by default.")]
+    public void ReactHelperOmittedByDefault()
+    {
+        GenerationResult result = Generate("""
+            using InertiaCore;
+            namespace H;
+            [InertiaPage("H/Index")]
+            public sealed record P(string Name);
+            """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Content, Does.Not.Contain("usePageProps"));
+            Assert.That(result.Content, Does.Not.Contain("@inertiajs/react"));
+        });
+    }
+
+    [Test]
+    [Description("The React helper is emitted behind the option and imports usePage.")]
+    public void ReactHelperEmittedWhenEnabled()
+    {
+        GenerationResult result = Generate(
+            """
+            using InertiaCore;
+            namespace H;
+            [InertiaPage("H/Index")]
+            public sealed record P(string Name);
+            """,
+            o => o.EmitReactHelper = true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Content, Does.Contain("import { usePage } from '@inertiajs/react';"));
+            Assert.That(
+                result.Content,
+                Does.Contain("export function usePageProps<K extends keyof InertiaPageProps>(component: K): InertiaPageProps[K]"));
+            Assert.That(result.Content, Does.Contain("return usePage().props as InertiaPageProps[K]"));
+        });
+    }
+
+    [Test]
+    [Description("The React helper intersects shared props when a shared record exists.")]
+    public void ReactHelperIntersectsSharedProps()
+    {
+        GenerationResult result = Generate(
+            """
+            using InertiaCore;
+            namespace H;
+
+            [InertiaSharedProps]
+            public sealed record SharedProps(string AppName);
+
+            [InertiaPage("H/Index")]
+            public sealed record P(string Name);
+            """,
+            o => o.EmitReactHelper = true);
+
+        Assert.That(
+            result.Content,
+            Does.Contain("component: K): InertiaPageProps[K] & InertiaSharedProps"));
+    }
+
+    [Test]
+    [Description("Deterministic output holds when the React helper is enabled.")]
+    public void ReactHelperIsDeterministic()
+    {
+        string assemblyPath = CompileToAssembly("""
+            using InertiaCore;
+            namespace D;
+
+            [InertiaSharedProps]
+            public sealed record SharedProps(string AppName);
+
+            [InertiaPage("D/Index")]
+            public sealed record DProps(string Name);
+            """);
+
+        var options = new TypeScriptGeneratorOptions { AssemblyPath = assemblyPath, EmitReactHelper = true };
+        options.ReferencePaths.Add(AppContext.BaseDirectory);
+
+        var generator = new TypeScriptDeclarationGenerator();
+        Assert.That(generator.Generate(options).Content, Is.EqualTo(generator.Generate(options).Content));
+    }
 }

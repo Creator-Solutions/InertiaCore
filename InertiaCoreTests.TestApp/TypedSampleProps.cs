@@ -27,6 +27,13 @@ public sealed record Address(string Street, string? Unit);
 /// <summary>Self-referential record used to prove cycles do not break generation.</summary>
 public sealed record TreeNode(string Name, IReadOnlyList<TreeNode> Children);
 
+/// <summary>Shared props shape registered for the TypeGen golden sample.</summary>
+[InertiaSharedProps]
+public sealed record TestAppSharedProps(
+    string AppName,
+    IReadOnlyList<string> Flash,
+    TypedSampleUser? Auth);
+
 /// <summary>Record with scalars, enums, nullables and collections.</summary>
 public sealed record TypedSampleUser(
     Guid Id,

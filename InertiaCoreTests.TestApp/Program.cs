@@ -64,6 +64,9 @@ app.MapGet("/typed", async (IInertia inertia) =>
 
 app.MapGet("/typed-sample", async (IInertia inertia) =>
 {
+    inertia.Share("appName", "InertiaCore TestApp");
+    inertia.Share("flash", new[] { "welcome" });
+
     var sample = new TypedSampleProps(
         new[]
         {

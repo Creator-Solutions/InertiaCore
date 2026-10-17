@@ -7,6 +7,12 @@ export interface Address {
   unit: string | null;
 }
 
+export interface InertiaSharedProps {
+  appName: string;
+  flash: string[];
+  auth: TypedSampleUser | null;
+}
+
 export interface TreeNode {
   name: string;
   children: TreeNode[];
