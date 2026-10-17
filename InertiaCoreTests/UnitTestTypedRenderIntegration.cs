@@ -59,4 +59,31 @@ public class UnitTestTypedRenderIntegration : WebApplicationFactory<Program>
             Assert.That(user.GetProperty("scores").GetProperty("logic").GetInt32(), Is.EqualTo(10));
         });
     }
+
+    [Test]
+    [Description("Shared props resolve into the page props and match the generated InertiaSharedProps shape.")]
+    public async Task TypedSample_SharedProps_MatchGeneratedShape()
+    {
+        using var client = CreateClient();
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/typed-sample");
+        request.Headers.Add("X-Inertia", "true");
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var props = body.GetProperty("props");
+        var sharedKeys = body.GetProperty("sharedProps")
+            .EnumerateArray()
+            .Select(static e => e.GetString())
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(props.GetProperty("appName").GetString(), Is.EqualTo("InertiaCore TestApp"));
+            Assert.That(props.GetProperty("flash").GetArrayLength(), Is.EqualTo(1));
+            Assert.That(sharedKeys, Does.Contain("appName"));
+            Assert.That(sharedKeys, Does.Contain("flash"));
+        });
+    }
 }

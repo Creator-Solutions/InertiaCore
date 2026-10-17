@@ -32,4 +32,13 @@ public sealed class TypeScriptGeneratorOptions
     /// <see cref="EnumSerializationMode.Auto"/>.
     /// </summary>
     public EnumSerializationMode EnumMode { get; set; } = EnumSerializationMode.Auto;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a React helper section is emitted alongside
+    /// the declarations. When <see langword="true"/>, the output imports
+    /// <c>usePage</c> from <c>@inertiajs/react</c> and exports a typed
+    /// <c>usePageProps</c> helper keyed by <c>InertiaPageProps</c>. Defaults to
+    /// <see langword="false"/> so projects that do not use React hooks are unaffected.
+    /// </summary>
+    public bool EmitReactHelper { get; set; }
 }

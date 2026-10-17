@@ -40,3 +40,48 @@ jobs:
         --assembly InertiaCoreTests.TestApp/bin/Debug/net10.0/InertiaCoreTests.TestApp.dll
         --output InertiaCoreTests/Golden/inertia.generated.d.ts
         --check
+
+  typescript:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      with:
+        dotnet-version: |
+          8.0.x
+          10.0.x
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: samples/react/package-lock.json
+    - name: Build TestApp
+      run: dotnet build InertiaCoreTests.TestApp/InertiaCoreTests.TestApp.csproj -c Debug -f net10.0
+    - name: Generate typed declarations for the sample
+      run: >-
+        dotnet run --project InertiaCore.TypeGen/InertiaCore.TypeGen.csproj
+        --framework net8.0 -c Debug --
+        --assembly InertiaCoreTests.TestApp/bin/Debug/net10.0/InertiaCoreTests.TestApp.dll
+        --output samples/react/types/inertia.generated.d.ts
+        --emit-react-helper
+    - name: Install sample dependencies
+      run: npm ci
+      working-directory: samples/react
+    - name: Type-check the sample under tsc --strict
+      run: npx tsc --noEmit
+      working-directory: samples/react
+    - name: Renaming a props member breaks consumers (negative check)
+      working-directory: samples/react
+      run: |
+        sed -i 's/total_count/totalCount/g' types/inertia.generated.d.ts
+        if npx tsc --noEmit >/tmp/tsc-negative.log 2>&1; then
+          echo "expected tsc to fail after renaming a props member, but it passed"
+          cat /tmp/tsc-negative.log
+          exit 1
+        fi
+        echo "tsc failed as expected:"
+        cat /tmp/tsc-negative.log

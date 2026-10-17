@@ -17,6 +17,8 @@ internal sealed class CliOptions
 
     public EnumSerializationMode EnumMode { get; private set; } = EnumSerializationMode.Auto;
 
+    public bool EmitReactHelper { get; private set; }
+
     public List<string> ReferencePaths { get; } = new();
 
     public bool ShowHelp { get; private set; }
@@ -47,6 +49,10 @@ internal sealed class CliOptions
 
                 case "--no-camel-case":
                     options.UseCamelCase = false;
+                    break;
+
+                case "--emit-react-helper":
+                    options.EmitReactHelper = true;
                     break;
 
                 case "--assembly":
@@ -117,6 +123,7 @@ internal sealed class CliOptions
           --reference <path>   Additional assembly used to resolve references. Repeatable.
           --enum-mode <mode>   auto | string | number. Default: auto.
           --no-camel-case      Disable camelCase property naming.
+          --emit-react-helper  Emit a typed usePageProps helper for @inertiajs/react.
           --check              Exit non-zero if the output file is out of date. No write.
           --watch              Regenerate whenever the assembly changes.
           -h, --help           Show this help.

@@ -10,6 +10,7 @@ namespace InertiaCore.TypeGen.Internal;
 internal static class MetadataHelpers
 {
     internal const string InertiaPageAttribute = "InertiaCore.InertiaPageAttribute";
+    internal const string InertiaSharedPropsAttribute = "InertiaCore.InertiaSharedPropsAttribute";
     internal const string JsonPropertyNameAttribute = "System.Text.Json.Serialization.JsonPropertyNameAttribute";
     internal const string JsonIgnoreAttribute = "System.Text.Json.Serialization.JsonIgnoreAttribute";
     internal const string JsonConverterAttribute = "System.Text.Json.Serialization.JsonConverterAttribute";

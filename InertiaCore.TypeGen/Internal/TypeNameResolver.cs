@@ -48,6 +48,19 @@ internal sealed class TypeNameResolver
         return candidate;
     }
 
+    /// <summary>
+    /// Reserves a specific TypeScript name for a type and enqueues it for emission. Used
+    /// for well-known declarations such as the shared props interface whose name is fixed
+    /// regardless of the underlying CLR type name.
+    /// </summary>
+    internal void Pin(Type type, string name)
+    {
+        string fullName = FullNameOf(type);
+        _namesByFullName[fullName] = name;
+        _fullNameByTsName[name] = fullName;
+        _queue.Add(type);
+    }
+
     private static string FullNameOf(Type type) =>
         type.FullName ?? type.AssemblyQualifiedName ?? type.Name;
 
