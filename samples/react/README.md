@@ -35,10 +35,10 @@ cd samples/react && npm ci && npx tsc --noEmit
 
 What the sample shows:
 
-- `app.tsx` — a typed page resolver: every name in `InertiaPageProps` must have a
+- `app.tsx`: a typed page resolver: every name in `InertiaPageProps` must have a
   matching entry, and each component is bound to the props declared for that name.
-- `Pages/*/Index.tsx` — page components typed with `InertiaPageProps['<Component>']`.
-- `components/SharedBanner.tsx` — the generated `usePageProps` helper, whose result
+- `Pages/*/Index.tsx`: page components typed with `InertiaPageProps['<Component>']`.
+- `components/SharedBanner.tsx`: the generated `usePageProps` helper, whose result
   intersects page props with `InertiaSharedProps`.
-- `routes-usage.ts` — the typed `route()` helper: known names and required parameters are
+- `routes-usage.ts`: the typed `route()` helper: known names and required parameters are
   enforced, and unknown names or missing parameters fail the type check.

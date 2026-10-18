@@ -1,0 +1,170 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+const repoRoot = path.resolve(__dirname, '..');
+const configPath = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.join(__dirname, 'slop-lint.config.json');
+
+function loadConfig() {
+  if (!fs.existsSync(configPath)) {
+    console.error(`slop-lint: config not found at ${configPath}`);
+    process.exit(2);
+  }
+  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+
+function walk(target, extensions, ignore, out) {
+  const stat = fs.statSync(target);
+  if (stat.isFile()) {
+    if (extensions.includes(path.extname(target))) out.push(target);
+    return;
+  }
+  for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+    const full = path.join(target, entry.name);
+    const rel = path.relative(repoRoot, full).split(path.sep).join('/');
+    if (ignore.some((frag) => rel.includes(frag))) continue;
+    walk(full, extensions, ignore, out);
+  }
+}
+
+function escapeRegex(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildWordRegex(words) {
+  const sorted = [...words].sort((a, b) => b.length - a.length);
+  return new RegExp(`\\b(${sorted.map(escapeRegex).join('|')})\\b`, 'gi');
+}
+
+function isCommentLine(trimmed, prefixes) {
+  return prefixes.some((p) => trimmed.startsWith(p));
+}
+
+function allowlisted(allowlist, file, line, rule, matchText, lineText) {
+  return allowlist.some((entry) => {
+    if (entry.rule && entry.rule !== rule) return false;
+    if (entry.file && !file.endsWith(entry.file)) return false;
+    if (typeof entry.line === 'number' && entry.line !== line) return false;
+    if (entry.text) {
+      const needle = entry.text.toLowerCase();
+      return matchText.toLowerCase().includes(needle) || lineText.toLowerCase().includes(needle);
+    }
+    return Boolean(entry.file || typeof entry.line === 'number');
+  });
+}
+
+function main() {
+  const config = loadConfig();
+  const rules = config.rules || {};
+  const ignore = config.ignore || [];
+  const allowlist = config.allowlist || [];
+  const extensions = config.extensions || ['.md'];
+  const codeBlocks = config.codeBlocks || {};
+
+  const wordRegexes = {};
+  for (const [id, rule] of Object.entries(rules)) {
+    if (!rule.enabled) continue;
+    if (Array.isArray(rule.words)) wordRegexes[id] = buildWordRegex(rule.words);
+  }
+
+  const files = [];
+  for (const target of config.targets) {
+    const abs = path.resolve(repoRoot, target);
+    if (!fs.existsSync(abs)) continue;
+    walk(abs, extensions, ignore, files);
+  }
+  files.sort();
+
+  const findings = [];
+  let filesScanned = 0;
+
+  for (const file of files) {
+    const rel = path.relative(repoRoot, file).split(path.sep).join('/');
+    const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+    filesScanned++;
+
+    let inFrontmatter = false;
+    let frontmatterDone = false;
+    let inFence = false;
+
+    lines.forEach((lineText, idx) => {
+      const lineNo = idx + 1;
+      const trimmed = lineText.trim();
+      // Ignore inline code spans so identifiers like `IList<...>` are not treated as copy.
+      const scanText = inFence
+        ? lineText
+        : lineText.replace(/`[^`]*`/g, (s) => ' '.repeat(s.length));
+
+      if (idx === 0 && trimmed === '---') {
+        inFrontmatter = true;
+        return;
+      }
+      if (inFrontmatter) {
+        if (trimmed === '---') {
+          inFrontmatter = false;
+          frontmatterDone = true;
+        }
+        return;
+      }
+      void frontmatterDone;
+
+      if (/^\s*(```|~~~)/.test(lineText)) {
+        inFence = !inFence;
+        return;
+      }
+
+      for (const [id, rule] of Object.entries(rules)) {
+        if (!rule.enabled) continue;
+
+        // Inside fenced code blocks, only the em-dash rule runs, and only on comment lines.
+        if (inFence) {
+          if (id !== 'em-dash' || !codeBlocks.emDashCommentsOnly) continue;
+          if (!isCommentLine(trimmed, codeBlocks.commentPrefixes || [])) continue;
+        }
+
+        if (rule.pattern) {
+          const re = new RegExp(rule.pattern, rule.flags || 'g');
+          let m;
+          while ((m = re.exec(scanText)) !== null) {
+            if (allowlisted(allowlist, rel, lineNo, id, m[0], lineText)) continue;
+            findings.push({ file: rel, line: lineNo, col: m.index + 1, rule: id, match: m[0].trim() });
+            if (m[0].length === 0) re.lastIndex++;
+          }
+        } else if (wordRegexes[id]) {
+          const re = wordRegexes[id];
+          re.lastIndex = 0;
+          let m;
+          while ((m = re.exec(scanText)) !== null) {
+            if (allowlisted(allowlist, rel, lineNo, id, m[0], lineText)) continue;
+            findings.push({ file: rel, line: lineNo, col: m.index + 1, rule: id, match: m[0] });
+          }
+        }
+      }
+    });
+  }
+
+  const byRule = {};
+  for (const f of findings) byRule[f.rule] = (byRule[f.rule] || 0) + 1;
+
+  console.log(`slop-lint: scanned ${filesScanned} file(s) in ${config.targets.join(', ')}`);
+  console.log(`slop-lint: ${findings.length} match(es)\n`);
+
+  for (const f of findings) {
+    console.log(`${f.file}:${f.line}:${f.col}  [${f.rule}]  ${JSON.stringify(f.match)}`);
+  }
+
+  if (findings.length) {
+    console.log('\nSummary by rule:');
+    for (const [rule, count] of Object.entries(byRule).sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${rule}: ${count}`);
+    }
+  }
+
+  process.exit(findings.length ? 1 : 0);
+}
+
+main();
