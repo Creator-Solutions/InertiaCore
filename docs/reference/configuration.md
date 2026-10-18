@@ -1,0 +1,63 @@
+# Configuration reference
+
+## `AddInertia`
+
+`AddInertia` accepts a configuration delegate over `InertiaOptions`:
+
+```csharp
+builder.Services.AddInertia(options =>
+{
+    // ...
+});
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `RootView` | `string` | `"~/Views/App.cshtml"` | Path to the root HTML view. |
+| `SsrEnabled` | `bool` | `false` | Enable server-side rendering via the gateway. |
+| `SsrUrl` | `string` | `"http://127.0.0.1:13714/render"` | SSR gateway endpoint. |
+| `SsrTimeout` | `TimeSpan` | `5s` | Timeout for a single SSR render request; on timeout the response falls back to client-side rendering. |
+| `SsrMaxResponseBytes` | `long` | `10 MiB` | Maximum SSR response body size that will be read and parsed; larger responses fall back to client-side rendering. |
+| `EncryptHistory` | `bool` | `false` | Emit `encryptHistory: true` in the page object. |
+| `Version` | `string?` | `""` | The current asset version. An empty string tells the client this server does not track asset versions. |
+| `VersionResolver` | `Func<IServiceProvider, string>?` | `null` | Resolve the asset version per request; takes precedence over `Version`. |
+| `ValidatePages` | `bool` | `false` | Throw when rendering a component not declared with `[InertiaPage]`. |
+
+## `AddViteHelper`
+
+`AddViteHelper` configures the Vite integration with `ViteOptions`:
+
+```csharp
+builder.Services.AddViteHelper(options =>
+{
+    // ...
+});
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `HotFile` | `string` | `"hot"` | Path to the Vite "hot" file. |
+| `BuildDirectory` | `string?` | `"build"` | Path to the build directory. |
+| `ManifestFilename` | `string` | `"manifest.json"` | Name of the manifest file. |
+| `PublicDirectory` | `string` | `"wwwroot"` | Path to the public directory. |
+| `CspNonce` | `string?` | `null` | Static CSP nonce applied to generated tags. Prefer `NonceResolver` when the nonce is per-request. |
+| `NonceResolver` | `Func<string?>?` | `null` | Resolves the CSP nonce at render time; takes precedence over `CspNonce` when it returns non-null. |
+| `IntegrityKey` | `string?` | `"integrity"` | Manifest key used to detect Subresource Integrity hashes. Set to `null` to disable. |
+| `PrefetchStrategy` | `PrefetchStrategy` | `None` | Prefetch strategy for dynamic imports. |
+| `PrefetchConcurrency` | `int` | `3` | Concurrency for the waterfall prefetch strategy. |
+| `PrefetchEvent` | `string` | `"load"` | Window event that triggers prefetching. |
+| `ScriptTagAttributes` | `IList<...>` | empty | Extra attributes applied to generated script tags. |
+| `StyleTagAttributes` | `IList<...>` | empty | Extra attributes applied to generated stylesheet tags. |
+| `PreloadTagAttributes` | `IList<...>` | empty | Extra attributes applied to generated preload/modulepreload tags. |
+
+## Minimal API route dump
+
+`MapInertiaRoutes()` maps the Development-only route metadata endpoint used by
+`inertiatsgen routes`. It returns `404` outside Development. See
+[Typed routes](/typescript/routes).
+
+## Tool options
+
+The `inertiatsgen` tool has its own flags; see
+[Declarations options](/typescript/declarations#options) and
+[Typed routes](/typescript/routes).

@@ -111,3 +111,22 @@ jobs:
         rm negative-routes.ts
         echo "tsc failed as expected:"
         cat /tmp/tsc-routes-negative.log
+
+  docs:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: docs/package-lock.json
+    - name: Install docs dependencies
+      run: npm ci
+      working-directory: docs
+    - name: Build the documentation site
+      run: npm run build
+      working-directory: docs

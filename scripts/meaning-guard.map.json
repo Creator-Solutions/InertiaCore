@@ -1,0 +1,167 @@
+[
+  {
+    "file": "README.md:8",
+    "before": "A production-ready ASP.NET Core adapter for building modern **Inertia.js** applications with .NET.",
+    "after": "A production-ready ASP.NET Core adapter for building **Inertia.js** applications with .NET."
+  },
+  {
+    "file": "README.md:11",
+    "before": "to build modern monolithic applications using your preferred frontend framework while keeping the",
+    "after": "to build monolithic applications using your preferred frontend framework while keeping the"
+  },
+  {
+    "file": "README.md:56",
+    "before": "- **Inertia.js v3** — full protocol support: request detection, version handling, partial reloads,",
+    "after": "- **Inertia.js v3**: full protocol support: request detection, version handling, partial reloads,"
+  },
+  {
+    "file": "README.md:58",
+    "before": "- **MVC & Minimal APIs** — the same Inertia responses work in controllers and endpoint handlers.",
+    "after": "- **MVC & Minimal APIs**: the same Inertia responses work in controllers and endpoint handlers."
+  },
+  {
+    "file": "README.md:59",
+    "before": "- **Rich props** — lazy and async props, deferred, once, merge and infinite-scroll props, with",
+    "after": "- **Rich props**: lazy and async props, deferred, once, merge and infinite-scroll props, with"
+  },
+  {
+    "file": "README.md:61",
+    "before": "- **Server-side rendering** — built-in SSR gateway support.",
+    "after": "- **Server-side rendering**: built-in SSR gateway support."
+  },
+  {
+    "file": "README.md:62",
+    "before": "- **Vite integration** — HMR detection, manifest resolution, module preloading, CSS handling, CSP",
+    "after": "- **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP"
+  },
+  {
+    "file": "README.md:64",
+    "before": "- **Validation & Precognition** — automatic `ModelState` error handling and form precognition.",
+    "after": "- **Validation & Precognition**: automatic `ModelState` error handling and form precognition."
+  },
+  {
+    "file": "README.md:65",
+    "before": "- **Typed end to end** — generate TypeScript declarations for your page props and typed route",
+    "after": "- **Typed end to end**: generate TypeScript declarations for your page props and typed route"
+  },
+  {
+    "file": "docs/introduction.md:3",
+    "before": "**InertiaCore.AspNetCore** is a production-ready ASP.NET Core adapter for building modern [Inertia.js](https://inertiajs.com) applications with .NET.",
+    "after": "**InertiaCore.AspNetCore** is a production-ready ASP.NET Core adapter for building [Inertia.js](https://inertiajs.com) applications with .NET."
+  },
+  {
+    "file": "docs/introduction.md:6",
+    "before": "It provides a complete server-side integration layer for Inertia.js, letting you build modern monolithic applications with your preferred frontend framework while keeping the simplicity of",
+    "after": "It provides a complete server-side integration layer for Inertia.js, letting you build monolithic applications with your preferred frontend framework while keeping the simplicity of"
+  },
+  {
+    "file": "docs/introduction.md:38",
+    "before": "- A frontend build tool — [Vite](https://vitejs.dev) is supported directly, but any bundler works",
+    "after": "- A frontend build tool. [Vite](https://vitejs.dev) is supported directly, but any bundler works"
+  },
+  {
+    "file": "docs/guide/precognition.md:5",
+    "before": "`Precognition: true` requests, validates them, and short-circuits with `204`/`422` — the endpoint/action body never runs.",
+    "after": "`Precognition: true` requests, validates them, and short-circuits with `204`/`422`. The endpoint/action body never runs."
+  },
+  {
+    "file": "docs/guide/precognition.md:10",
+    "before": "- **Valid** — `204 No Content` with `Precognition-Success: true`.",
+    "after": "- **Valid**: `204 No Content` with `Precognition-Success: true`."
+  },
+  {
+    "file": "docs/guide/precognition.md:11",
+    "before": "- **Invalid** — `422 Unprocessable Entity` with `{ \"errors\": { field: [messages] } }`.",
+    "after": "- **Invalid**: `422 Unprocessable Entity` with `{ \"errors\": { field: [messages] } }`."
+  },
+  {
+    "file": "docs/guide/props.md:42",
+    "before": "reloads instead of replacing it — useful for \"load more\" pagination. A full visit always replaces the prop.",
+    "after": "reloads instead of replacing it (useful for \"load more\" pagination). A full visit always replaces the prop."
+  },
+  {
+    "file": "docs/guide/responses.md:61",
+    "before": "user-supplied value straight through creates an open redirect. Validate the target before redirecting — for example, only accept local URLs, or an allow-listed set of hosts:",
+    "after": "user-supplied value straight through creates an open redirect. Validate the target before redirecting. For example, only accept local URLs, or an allow-listed set of hosts:"
+  },
+  {
+    "file": "docs/guide/validation.md:50",
+    "before": "With React you can read the same prop through the typed page hook — see [Typed declarations](/typescript/declarations).",
+    "after": "With React you can read the same prop through the typed page hook. See [Typed declarations](/typescript/declarations)."
+  },
+  {
+    "file": "docs/typescript/index.md:4",
+    "before": "typed helper for building URLs — both generated from your C# code.",
+    "after": "typed helper for building URLs (both generated from your C# code)."
+  },
+  {
+    "file": "docs/typescript/index.md:6",
+    "before": "- [Declarations](/typescript/declarations) — generate TypeScript types for every `[InertiaPage]` type with `InertiaCore.TypeGen`.",
+    "after": "- [Declarations](/typescript/declarations): generate TypeScript types for every `[InertiaPage]` type with `InertiaCore.TypeGen`."
+  },
+  {
+    "file": "docs/typescript/index.md:8",
+    "before": "- [Typed routes](/typescript/routes) — generate a Ziggy-style `route()` helper from your named Minimal API endpoints.",
+    "after": "- [Typed routes](/typescript/routes): generate a Ziggy-style `route()` helper from your named Minimal API endpoints."
+  },
+  {
+    "file": "docs/typescript/index.md:65",
+    "before": "mapping, so it is left out of the type table and `Render<T>` throws — use the string overload for those.",
+    "after": "mapping, so it is left out of the type table and `Render<T>` throws. Use the string overload for those."
+  },
+  {
+    "file": "docs/typescript/declarations.md:97",
+    "before": "The attribute is a code-generation marker only — it does not share anything at runtime. Keep using",
+    "after": "The attribute is a code-generation marker only. It does not share anything at runtime. Keep using"
+  },
+  {
+    "file": "docs/project/changelog.md:13",
+    "before": "- **Typed routes** — `inertiatsgen routes` generates a Ziggy-style `route()` helper from your named Minimal API endpoints, with a Development-only metadata dump via `MapInertiaRoutes()`. See [Typed routes](/typescript/routes).",
+    "after": "- **Typed routes**: `inertiatsgen routes` generates a Ziggy-style `route()` helper from your named Minimal API endpoints, with a Development-only metadata dump via `MapInertiaRoutes()`. See [Typed routes](/typescript/routes)."
+  },
+  {
+    "file": "docs/project/changelog.md:16",
+    "before": "- **Typed registry, React helper & shared props** — declare pages with `[InertiaPage]`, render by type with `Render<T>`, emit an opt-in `usePageProps` helper, and describe shared props with `[InertiaSharedProps]`. See [TypeScript](/typescript/).",
+    "after": "- **Typed registry, React helper & shared props**: declare pages with `[InertiaPage]`, render by type with `Render<T>`, emit an opt-in `usePageProps` helper, and describe shared props with `[InertiaSharedProps]`. See [TypeScript](/typescript/)."
+  },
+  {
+    "file": "docs/project/changelog.md:19",
+    "before": "- **`InertiaCore.TypeGen`** — a dotnet tool that writes TypeScript declarations from your compiled assembly without executing it. See [Declarations](/typescript/declarations).",
+    "after": "- **`InertiaCore.TypeGen`**: a dotnet tool that writes TypeScript declarations from your compiled assembly without executing it. See [Declarations](/typescript/declarations)."
+  },
+  {
+    "file": "docs/security.md:10",
+    "before": "adapter does not wire up CSRF protection for you** — you must do it explicitly.",
+    "after": "adapter does not wire up CSRF protection for you**: you must do it explicitly."
+  },
+  {
+    "file": "docs/security.md:60",
+    "before": "user-supplied value straight through — validate it first (for example with `Url.IsLocalUrl`) or use",
+    "after": "user-supplied value straight through: validate it first (for example with `Url.IsLocalUrl`) or use"
+  },
+  {
+    "file": "docs/security.md:74",
+    "before": "response — do not put user-specific values there.",
+    "after": "response: do not put user-specific values there."
+  },
+  {
+    "file": "samples/react/README.md:38",
+    "before": "- `app.tsx` — a typed page resolver: every name in `InertiaPageProps` must have a",
+    "after": "- `app.tsx`: a typed page resolver: every name in `InertiaPageProps` must have a"
+  },
+  {
+    "file": "samples/react/README.md:40",
+    "before": "- `Pages/*/Index.tsx` — page components typed with `InertiaPageProps['<Component>']`.",
+    "after": "- `Pages/*/Index.tsx`: page components typed with `InertiaPageProps['<Component>']`."
+  },
+  {
+    "file": "samples/react/README.md:41",
+    "before": "- `components/SharedBanner.tsx` — the generated `usePageProps` helper, whose result",
+    "after": "- `components/SharedBanner.tsx`: the generated `usePageProps` helper, whose result"
+  },
+  {
+    "file": "samples/react/README.md:43",
+    "before": "- `routes-usage.ts` — the typed `route()` helper: known names and required parameters are",
+    "after": "- `routes-usage.ts`: the typed `route()` helper: known names and required parameters are"
+  }
+]

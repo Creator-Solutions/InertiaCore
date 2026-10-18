@@ -1,0 +1,184 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+const repoRoot = path.resolve(__dirname, '..');
+const defaultMap = path.join(__dirname, 'meaning-guard.map.json');
+const defaultConfig = path.join(__dirname, 'meaning-guard.config.json');
+
+const MODALITY = [
+  'all', 'every', 'some', 'most', 'any', 'only', 'never', 'always', 'sometimes',
+  'can', 'may', 'might', 'will', 'should', 'must', 'helps', 'aims'
+];
+const NEGATIONS = ['not', 'no', 'cannot', 'without', 'never'];
+const PROPER_STOPWORDS = new Set([
+  'A', 'An', 'The', 'In', 'On', 'At', 'To', 'For', 'And', 'Or', 'But', 'If', 'When',
+  'After', 'Before', 'This', 'That', 'These', 'Those', 'It', 'Its', 'You', 'Your',
+  'We', 'Our', 'They', 'Their', 'He', 'She', 'Use', 'See', 'Pass', 'Set', 'Get',
+  'Add', 'Run', 'Keep', 'Call', 'Make', 'Send', 'Return', 'Do', 'Does', 'By', 'With',
+  'As', 'Is', 'Are', 'Was', 'Were', 'Be', 'Been', 'From', 'Into', 'Of'
+]);
+
+function multiset(values) {
+  const map = new Map();
+  for (const v of values) map.set(v, (map.get(v) || 0) + 1);
+  return map;
+}
+
+function matchAll(text, re) {
+  const out = [];
+  let m;
+  re.lastIndex = 0;
+  while ((m = re.exec(text)) !== null) {
+    out.push(m[0]);
+    if (m[0].length === 0) re.lastIndex++;
+  }
+  return out;
+}
+
+function extract(text) {
+  const t = String(text == null ? '' : text);
+  const words = (list) => {
+    const re = new RegExp(`\\b(${list.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
+    return matchAll(t, re).map((w) => w.toLowerCase());
+  };
+
+  const properTokens = matchAll(t, /\b[A-Z][a-zA-Z0-9]+\b/g).filter((w) => !PROPER_STOPWORDS.has(w));
+  const firstWord = (t.trim().split(/\s+/)[0] || '').replace(/[^A-Za-z0-9]+/g, '');
+  if (properTokens.length && firstWord === properTokens[0]) {
+    // Drop a leading capitalized token: it is usually just sentence case.
+    properTokens.shift();
+  }
+
+  return {
+    numbers: matchAll(t, /\b\d[\d,]*(?:\.\d+)?\b/g),
+    currency: matchAll(t, /[$€£¥]\s?\d[\d,]*(?:\.\d+)?/g),
+    urls: matchAll(t, /https?:\/\/[^\s)"'`\]]+/g),
+    emails: matchAll(t, /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g),
+    placeholders: matchAll(t, /\{\{[^}]+\}\}|\{[A-Za-z0-9_.]*\}|%s|%\d+\$?[sd]|%\([^)]+\)[sd]/g),
+    htmlTags: matchAll(t, /<\/?[A-Za-z][A-Za-z0-9-]*\b[^>]*>/g),
+    markdownLinks: matchAll(t, /\[[^\]]*\]\([^)]*\)/g),
+    codeSpans: matchAll(t, /`[^`]+`/g),
+    modality: words(MODALITY),
+    negations: words(NEGATIONS),
+    properNouns: properTokens
+  };
+}
+
+function diffCategory(name, beforeList, afterList, allowRemoved) {
+  const before = multiset(beforeList);
+  const after = multiset(afterList);
+  const missing = [];
+  const added = [];
+
+  for (const [k, n] of before) {
+    const have = after.get(k) || 0;
+    for (let i = have; i < n; i++) {
+      if (name === 'modality' || name === 'properNouns' || true) {
+        if (allowRemoved.some((a) => a.toLowerCase() === k.toLowerCase())) continue;
+      }
+      missing.push(k);
+    }
+  }
+  for (const [k, n] of after) {
+    const have = before.get(k) || 0;
+    for (let i = have; i < n; i++) added.push(k);
+  }
+  return { missing, added };
+}
+
+const CATEGORIES = [
+  'numbers', 'currency', 'urls', 'emails', 'placeholders',
+  'htmlTags', 'markdownLinks', 'codeSpans', 'modality', 'negations', 'properNouns'
+];
+
+function checkPair(pair, allowRemoved) {
+  const before = extract(pair.before);
+  const after = extract(pair.after);
+  const problems = [];
+  for (const cat of CATEGORIES) {
+    const { missing, added } = diffCategory(cat, before[cat], after[cat], allowRemoved);
+    if (missing.length || added.length) {
+      problems.push({ category: cat, missing, added });
+    }
+  }
+  return problems;
+}
+
+function loadJson(file, fallback) {
+  if (!fs.existsSync(file)) return fallback;
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+function runSelfTest() {
+  const cases = [
+    { name: 'punctuation-only', before: 'Items — all of them', after: 'Items: all of them', expect: true },
+    { name: 'number change', before: 'Save 20% today', after: 'Save 10% today', expect: false },
+    { name: 'modality change', before: 'You can delete it', after: 'You will delete it', expect: false },
+    { name: 'negation dropped', before: 'This is not allowed', after: 'This is allowed', expect: false },
+    { name: 'placeholder kept', before: 'Hello {name}, you have %s items', after: 'Hello {name}: you have %s items', expect: true },
+    { name: 'url dropped', before: 'Docs at https://example.com/a', after: 'Docs', expect: false },
+    { name: 'allow-removed slop', before: 'Build modern apps', after: 'Build apps', expect: true, allowRemoved: ['modern'] }
+  ];
+
+  let failed = 0;
+  for (const c of cases) {
+    const allowRemoved = c.allowRemoved || [];
+    const problems = checkPair(c, allowRemoved);
+    const ok = (problems.length === 0) === c.expect;
+    if (!ok) failed++;
+    console.log(`  [${ok ? 'PASS' : 'FAIL'}] ${c.name} (expected ${c.expect ? 'clean' : 'mismatch'})`);
+    if (problems.length) {
+      for (const p of problems) {
+        console.log(`         ${p.category}: missing=[${p.missing.join(', ')}] added=[${p.added.join(', ')}]`);
+      }
+    }
+  }
+  console.log(`\nmeaning-guard self-test: ${failed === 0 ? 'all passed' : failed + ' failed'}`);
+  process.exit(failed === 0 ? 0 : 1);
+}
+
+function main() {
+  if (process.argv.includes('--self-test')) return runSelfTest();
+
+  const mapPath = process.argv[2] ? path.resolve(process.argv[2]) : defaultMap;
+  const config = loadJson(defaultConfig, { allowRemoved: [] });
+  const allowRemoved = config.allowRemoved || [];
+  const pairs = loadJson(mapPath, null);
+
+  if (!Array.isArray(pairs)) {
+    console.error(`meaning-guard: map file not found or not an array: ${mapPath}`);
+    process.exit(2);
+  }
+
+  console.log(`meaning-guard: ${pairs.length} pair(s) from ${path.relative(repoRoot, mapPath)}`);
+  console.log(`meaning-guard: allowRemoved = [${allowRemoved.join(', ')}]\n`);
+
+  let failures = 0;
+  pairs.forEach((pair, i) => {
+    const problems = checkPair(pair, allowRemoved);
+    const label = pair.file || pair.key || `pair[${i}]`;
+    if (problems.length) {
+      failures++;
+      console.log(`MISMATCH ${label}`);
+      for (const p of problems) {
+        console.log(`  ${p.category}: missing=[${p.missing.join(', ')}] added=[${p.added.join(', ')}]`);
+      }
+    }
+  });
+
+  if (failures === 0) {
+    console.log('meaning-guard: no mismatches');
+  } else {
+    console.log(`\nmeaning-guard: ${failures} pair(s) with mismatches`);
+  }
+  console.log('\nNote: this guard compares mechanical tokens (numbers, URLs, placeholders,');
+  console.log('tags, quantifiers/modality, negations, proper nouns). It cannot detect');
+  console.log('subtler meaning drift. Every change still needs a written meaning check.');
+
+  process.exit(failures === 0 ? 0 : 1);
+}
+
+main();

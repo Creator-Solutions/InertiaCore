@@ -1,0 +1,128 @@
+{
+  "targets": ["docs", "README.md", "samples/react/README.md"],
+  "extensions": [".md"],
+  "ignore": [
+    "node_modules",
+    ".vitepress/dist",
+    ".vitepress/cache",
+    "package-lock.json"
+  ],
+  "rules": {
+    "em-dash": {
+      "enabled": true,
+      "description": "Em dash used as prose or label punctuation",
+      "pattern": "—"
+    },
+    "hype-vocab": {
+      "enabled": true,
+      "description": "Hype or vague vocabulary",
+      "words": [
+        "seamless",
+        "robust",
+        "leverage",
+        "utilize",
+        "utilise",
+        "elevate",
+        "empower",
+        "unlock",
+        "supercharge",
+        "streamline",
+        "harness",
+        "delve",
+        "landscape",
+        "realm",
+        "tapestry",
+        "journey",
+        "cutting-edge",
+        "game-changing",
+        "revolutionary",
+        "next-level",
+        "powerful",
+        "effortless",
+        "intuitive",
+        "comprehensive",
+        "holistic",
+        "a variety of",
+        "a wide range of",
+        "plays a crucial role",
+        "it's important to note",
+        "modern"
+      ]
+    },
+    "filler-opener": {
+      "enabled": true,
+      "description": "Marketing opener or filler transition",
+      "words": [
+        "in today's",
+        "let's dive",
+        "let's dive in",
+        "we've got you covered",
+        "say goodbye to",
+        "imagine a world where",
+        "look no further",
+        "whether you're a",
+        "ready to take control",
+        "furthermore",
+        "moreover",
+        "additionally"
+      ]
+    },
+    "rhetorical-heading": {
+      "enabled": true,
+      "description": "Heading phrased as a question",
+      "pattern": "^\\s*#{1,6}\\s+.*\\?\\s*$"
+    },
+    "stacked-punctuation": {
+      "enabled": true,
+      "description": "Stacked exclamation marks or decorative ellipsis",
+      "pattern": "!!|\\?\\?|!\\?|\\?!|\\.\\.\\.|…"
+    },
+    "emoji": {
+      "enabled": true,
+      "description": "Emoji in headings, buttons or body copy",
+      "flags": "gu",
+      "pattern": "[\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{1F300}-\\u{1FAFF}]"
+    },
+    "spaced-hyphen-dash": {
+      "enabled": true,
+      "description": "Hyphen used as a dash (space hyphen space) in prose",
+      "pattern": "\\s+-{1,2}\\s+"
+    },
+    "title-case-heading": {
+      "enabled": false,
+      "description": "Heading that appears to use title case (heuristic; off by default to avoid noise)",
+      "minWords": 4,
+      "capitalizedRatio": 0.6
+    }
+  },
+  "codeBlocks": {
+    "emDashCommentsOnly": true,
+    "commentPrefixes": ["//", "#", "<!--", "/*", "*", "--"]
+  },
+  "allowlist": [
+    {
+      "rule": "rhetorical-heading",
+      "file": "docs/introduction.md",
+      "text": "Why InertiaCore?",
+      "reason": "Conventional docs heading; owner approved keeping it."
+    },
+    {
+      "rule": "em-dash",
+      "file": "docs/guide/vite.md",
+      "line": 57,
+      "reason": "Comment inside a copy-pasteable config block; owner ruled it not editable."
+    },
+    {
+      "rule": "hype-vocab",
+      "file": "docs/introduction.md",
+      "line": 31,
+      "reason": "Retained per owner: 'modern' modifies 'frontend components', not 'applications'."
+    },
+    {
+      "rule": "rhetorical-heading",
+      "file": "README.md",
+      "text": "Why InertiaCore?",
+      "reason": "Not present in README; kept for parity with the docs heading."
+    }
+  ]
+}
