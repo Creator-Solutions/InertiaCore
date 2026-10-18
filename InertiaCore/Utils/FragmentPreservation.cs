@@ -1,3 +1,4 @@
+using InertiaCore.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,7 +61,6 @@ internal static class FragmentPreservation
 
     private static ITempDataDictionary? GetTempData(HttpContext context)
     {
-        var factory = context.RequestServices?.GetService<ITempDataDictionaryFactory>();
-        return factory?.GetTempData(context);
+        return FlashTempData.Get(context);
     }
 }

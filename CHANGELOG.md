@@ -1,5 +1,58 @@
 # Changelog
 
+## Unreleased
+
+### Minimal API Validation (IN-61)
+
+Brings Minimal API endpoints to parity with MVC error handling. Arguments bound to an endpoint
+can be validated with DataAnnotations, and failures are reported through Inertia: errors go to
+the error bag and Inertia requests are redirected back with `303`.
+
+#### Added
+
+- **`WithInertiaValidation()`** (`InertiaCore.Extensions`) on `RouteHandlerBuilder` and on
+  `RouteGroupBuilder`, so a whole group can opt in. It adds `InertiaValidationEndpointFilter`.
+  - Inertia requests get the errors in the bag named by `X-Inertia-Error-Bag` (or `default`),
+    a `303 See Other` back to the referrer, and the errors flashed through
+    `IInertiaFlashProvider`. Without a flash provider the response is a `422` instead.
+  - Other requests get a `422` validation problem. Valid requests reach the handler unchanged.
+  - On .NET 10 and later, when `AddValidation()` is active, the framework validates the
+    arguments once and the Inertia writer answers its failure. The arguments are not validated
+    a second time.
+- Errors flashed by a `303` are restored into the error bag on the next page render, so they
+  show up in the `errors` prop after the redirect.
+
+#### Changed
+
+- `DataAnnotationsRequestValidator` validates nested objects and collection elements, with
+  error keys such as `address.street` and `items.0.name`. Previously only top-level members
+  were checked. This also applies to Precognition, which now reports nested errors under the
+  same keys. Existing top-level keys are unchanged.
+- `AddInertia()` on .NET 10 and later registers `IProblemDetailsService` (through
+  `AddProblemDetails()`) and an Inertia problem-details writer. The writer only handles
+  validation problems on endpoints that opted in. Other problems use the default writers.
+  Non-Inertia `422` bodies on those endpoints go through the other registered writers.
+- `AddInertia()` calls `AddDataProtection()`, which is idempotent, because the flash cookie
+  is encrypted.
+
+#### Fixed
+
+- Flash data is now persisted through TempData. `InertiaFlashProvider` stores the flash bag as
+  JSON in TempData, because TempData cannot serialize a dictionary.
+- On hosts without MVC, flash data and fragment preservation are stored in an encrypted cookie.
+  Previously they were lost on the redirect. MVC hosts keep their existing TempData provider.
+- TempData is saved when the response starts, so Minimal API endpoints persist flash data
+  without running MVC's save filter.
+
+#### Notes
+
+- No breaking change to the existing public API. All public additions are new members.
+- `WithInertiaPrecognition()` and `WithInertiaValidation()` can be applied in either order.
+- The `InertiaCore.AspNetCore` package is unchanged and still ships the source generator
+  exactly once.
+
+---
+
 ## Unreleased — Typed Routes (IN-57)
 
 Generates a typed `routes.ts` module (a Ziggy-style `route()` helper) from named Minimal

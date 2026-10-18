@@ -4,6 +4,7 @@ using InertiaCore.Models;
 using InertiaCore.Props;
 using InertiaCore.Services;
 using InertiaCore.Utils;
+using InertiaCore.Validation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -218,6 +219,7 @@ public class Response : IActionResult, IResult
     private Dictionary<string, object?> ResolveFlashProps(Dictionary<string, object?> props)
     {
         var persisted = _flashProvider?.Pull() ?? EmptyProps;
+        persisted = RestoreFlashedErrors(persisted);
         var current = _state.FlashProps;
 
         if (persisted.Count == 0 && current.Count == 0)
@@ -234,6 +236,42 @@ public class Response : IActionResult, IResult
             result[key] = value;
 
         return result;
+    }
+
+    /// <summary>
+    /// Restores validation errors flashed by a previous request (for example a 303 from
+    /// <c>WithInertiaValidation</c>) into the error bag, and returns the flash without
+    /// the reserved key so it is not merged into props.
+    /// </summary>
+    /// <remarks>
+    /// The restored bag becomes the current bag when the request did not send
+    /// <c>X-Inertia-Error-Bag</c> itself, so a named bag is rendered after the redirect.
+    /// Errors already present in the current request's bag are not overwritten.
+    /// </remarks>
+    private IReadOnlyDictionary<string, object?> RestoreFlashedErrors(IReadOnlyDictionary<string, object?> persisted)
+    {
+        if (!persisted.TryGetValue(ValidationErrorFlash.Key, out var raw))
+            return persisted;
+
+        var remaining = new Dictionary<string, object?>(persisted);
+        remaining.Remove(ValidationErrorFlash.Key);
+
+        var requestServices = _context?.HttpContext?.RequestServices;
+        var errorBagService = requestServices?.GetService(typeof(IErrorBagService)) as IErrorBagService;
+
+        if (errorBagService is not null && ValidationErrorFlash.TryRead(raw, out var bagName, out var errors))
+        {
+            var headerBag = _context!.HttpContext.Request.Headers[InertiaHeader.ErrorBag].ToString();
+            if (string.IsNullOrEmpty(headerBag))
+                errorBagService.CurrentBagName = bagName;
+
+            if (errorBagService.GetErrors(errorBagService.CurrentBagName) is null)
+                errorBagService.AddErrors(
+                    errorBagService.CurrentBagName,
+                    errors.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
+        }
+
+        return remaining;
     }
 
     private static readonly IReadOnlyDictionary<string, object?> EmptyProps =
