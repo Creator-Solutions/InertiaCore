@@ -4,6 +4,7 @@ obj/
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+.DS_Store
 riderModule.iml
 /_ReSharper.Caches/
 .idea/

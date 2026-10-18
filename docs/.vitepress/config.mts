@@ -1,21 +1,23 @@
 import { defineConfig } from 'vitepress'
 
-// Update `hostname` to the production URL before the first deploy so the
-// sitemap and canonical/OG tags point at the right origin.
-const HOSTNAME = 'https://inertiacore.dev'
+// Deployed as a GitHub Pages project site, so everything is served under a
+// sub-path: https://creator-solutions.github.io/InertiaCore/
+const BASE = '/InertiaCore/'
+// Sitemap hostname. VitePress resolves each relative sitemap url against this
+// (new URL(url, HOSTNAME)), so it must end with a slash to keep the sub-path.
+const HOSTNAME = 'https://creator-solutions.github.io/InertiaCore/'
 
 export default defineConfig({
   title: 'InertiaCore',
   description: 'A production-ready Inertia.js adapter for ASP.NET Core.',
 
-  // Served at the root of a dedicated domain.
-  base: '/',
+  base: BASE,
   cleanUrls: true,
 
   lastUpdated: true,
 
   head: [
-    ['link', { rel: 'icon', href: '/favicon.svg' }],
+    ['link', { rel: 'icon', href: `${BASE}favicon.svg` }],
     ['meta', { name: 'theme-color', content: '#9553e9' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'InertiaCore' }],
