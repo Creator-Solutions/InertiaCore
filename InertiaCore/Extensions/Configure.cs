@@ -86,6 +86,17 @@ public static class Configure
         // default DataAnnotations-based validator with their own implementation.
         services.TryAddScoped<IInertiaRequestValidator, DataAnnotationsRequestValidator>();
 
+        // Data protection backs the cookie-based flash store used when MVC TempData is absent.
+        services.AddDataProtection();
+
+#if NET10_0_OR_GREATER
+        // The built-in minimal API validation reports failures through IProblemDetailsService.
+        // Registering the Inertia writer first lets it turn those failures into Inertia
+        // responses on endpoints that opted in with WithInertiaValidation.
+        services.AddProblemDetails();
+        services.Insert(0, ServiceDescriptor.Singleton<IProblemDetailsWriter, InertiaValidationProblemDetailsWriter>());
+#endif
+
         services.AddScoped<IInertiaVersionProvider>(sp =>
         {
             var opt = sp.GetRequiredService<IOptions<InertiaOptions>>().Value;

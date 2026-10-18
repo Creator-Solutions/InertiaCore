@@ -1,3 +1,4 @@
+using System.Text.Json;
 using InertiaCore.Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -76,8 +77,10 @@ public sealed class InertiaFlashProvider : IInertiaFlashProvider
         var tempData = GetTempData(context);
         if (tempData is not null)
         {
-            return tempData.TryGetValue(Key, out var value) && value is Dictionary<string, object?> bag
-                ? bag
+            // TempData is serialized between requests and only supports scalar and string
+            // values, so the bag is kept as JSON there (see SetBag).
+            return tempData.TryGetValue(Key, out var value) && value is string json
+                ? Deserialize(json)
                 : null;
         }
 
@@ -91,11 +94,23 @@ public sealed class InertiaFlashProvider : IInertiaFlashProvider
         var tempData = GetTempData(context);
         if (tempData is not null)
         {
-            tempData[Key] = bag;
+            tempData[Key] = JsonSerializer.Serialize(bag);
             return;
         }
 
         context.Items[Key] = bag;
+    }
+
+    private static Dictionary<string, object?>? Deserialize(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, object?>>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static void RemoveBag(HttpContext context)
@@ -112,7 +127,6 @@ public sealed class InertiaFlashProvider : IInertiaFlashProvider
 
     private static ITempDataDictionary? GetTempData(HttpContext context)
     {
-        var factory = context.RequestServices?.GetService<ITempDataDictionaryFactory>();
-        return factory?.GetTempData(context);
+        return FlashTempData.Get(context);
     }
 }

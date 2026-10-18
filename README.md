@@ -61,7 +61,8 @@ wire up the frontend.
 - **Server-side rendering**: built-in SSR gateway support.
 - **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP
   nonces and integrity hashes.
-- **Validation & Precognition**: automatic `ModelState` error handling and form precognition.
+- **Validation & Precognition**: automatic `ModelState` error handling, `WithInertiaValidation()`
+  for Minimal API endpoints (303 back with errors for Inertia requests), and form precognition.
 - **Typed end to end**: generate TypeScript declarations for your page props and typed route
   helpers from your C# contracts with `InertiaCore.TypeGen`.
 

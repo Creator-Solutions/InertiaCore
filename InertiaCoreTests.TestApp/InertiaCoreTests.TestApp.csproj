@@ -5,6 +5,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <!-- Enables the .NET 10 built-in minimal API validation source generator (net10.0 only). -->
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Validation.Generated</InterceptorsNamespaces>
     </PropertyGroup>
 
     <ItemGroup>

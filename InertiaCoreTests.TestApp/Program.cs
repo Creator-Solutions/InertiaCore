@@ -8,6 +8,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInertia();
 builder.Services.AddControllersWithViews();
 
+#if NET10_0_OR_GREATER
+// Opt-in so the default host keeps its existing behaviour. The built-in validation
+// integration tests set this flag.
+if (builder.Configuration.GetValue<bool>("UseBuiltInValidation"))
+{
+    builder.Services.AddValidation();
+}
+#endif
+
 var app = builder.Build();
 app.UseRouting();
 app.UseInertia();
@@ -55,6 +64,46 @@ app.MapPost("/precognition", (PrecognitionInput input) =>
     // path, which is unrelated to Precognition.
     return Results.Text("ok");
 }).WithInertiaPrecognition();
+
+// Minimal API validation (IN-61). The submitted model has nested and collection members
+// so the error key format (dotted paths and numeric indexes) is exercised end to end.
+app.MapPost("/validation", (ValidationInput input) =>
+{
+    ValidationProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaValidation();
+
+var validationGroup = app.MapGroup("/validation-group").WithInertiaValidation();
+validationGroup.MapPost("/submit", (ValidationInput input) =>
+{
+    ValidationProbe.HandlerRuns++;
+    return Results.Text("ok");
+});
+
+// Precognition and validation on the same endpoint, in both filter orders. A precognitive
+// request must be answered by Precognition (204/422) whichever filter is added first.
+app.MapPost("/precognition-validation", (ValidationInput input) =>
+{
+    ValidationProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaPrecognition().WithInertiaValidation();
+
+app.MapPost("/precognition-validation-reversed", (ValidationInput input) =>
+{
+    ValidationProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaValidation().WithInertiaPrecognition();
+
+// Endpoint without validation attributes: the filter must be a no-op.
+app.MapPost("/validation-plain", (PlainValidationInput input) =>
+{
+    ValidationProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaValidation();
+
+// Renders the page that a 303 redirect lands on, so flashed errors can be read back.
+app.MapGet("/validation/page", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { ok = true }));
 
 app.MapGet("/protocol/target", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));
@@ -132,6 +181,47 @@ public sealed class PrecognitionInput
 
 /// <summary>Tracks how often the precognition test endpoint handler executed.</summary>
 public static class PrecognitionProbe
+{
+    public static int HandlerRuns;
+}
+
+/// <summary>Model used by the Minimal API validation integration tests.</summary>
+public sealed class ValidationInput
+{
+    [Required]
+    public string? Name { get; set; }
+
+    [Required]
+    public ValidationAddress? Address { get; set; }
+
+    public List<ValidationLineItem>? Items { get; set; }
+}
+
+/// <summary>Nested object used by <see cref="ValidationInput"/>.</summary>
+public sealed class ValidationAddress
+{
+    [Required]
+    public string? Street { get; set; }
+}
+
+/// <summary>Collection element used by <see cref="ValidationInput"/>.</summary>
+public sealed class ValidationLineItem
+{
+    [Required]
+    public string? Name { get; set; }
+
+    [Range(1, 100)]
+    public int Quantity { get; set; }
+}
+
+/// <summary>Model with no validation attributes, for the no-op case.</summary>
+public sealed class PlainValidationInput
+{
+    public string? Name { get; set; }
+}
+
+/// <summary>Tracks how often a validation test endpoint handler executed.</summary>
+public static class ValidationProbe
 {
     public static int HandlerRuns;
 }
