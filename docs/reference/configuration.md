@@ -23,6 +23,20 @@ builder.Services.AddInertia(options =>
 | `VersionResolver` | `Func<IServiceProvider, string>?` | `null` | Resolve the asset version per request; takes precedence over `Version`. |
 | `ValidatePages` | `bool` | `false` | Throw when rendering a component not declared with `[InertiaPage]`. |
 
+### `InertiaOptions.Antiforgery`
+
+The `Antiforgery` object configures the opt-in XSRF cookie bridge. See
+[CSRF / antiforgery](/security) for usage.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Enabled` | `bool` | `false` | Register anti-forgery and issue the XSRF cookie via `UseInertiaAntiforgery()`. |
+| `CookieName` | `string` | `"XSRF-TOKEN"` | Name of the JavaScript-readable token cookie. |
+| `HeaderName` | `string` | `"X-XSRF-TOKEN"` | Request header the token is validated from. |
+| `SecurePolicy` | `CookieSecurePolicy` | `SameAsRequest` | When the token cookie is sent over HTTPS. Use `Always` in production. |
+| `SameSite` | `SameSiteMode` | `Lax` | `SameSite` policy of the token cookie. |
+| `CookiePath` | `string` | `"/"` | Path the token cookie is scoped to. |
+
 ## `AddViteHelper`
 
 `AddViteHelper` configures the Vite integration with `ViteOptions`:

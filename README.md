@@ -63,6 +63,9 @@ wire up the frontend.
   nonces and integrity hashes.
 - **Validation & Precognition**: automatic `ModelState` error handling, `WithInertiaValidation()`
   for Minimal API endpoints (303 back with errors for Inertia requests), and form precognition.
+- **Anti-forgery bridge**: opt-in `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header wiring that works with
+  `[AutoValidateAntiforgeryToken]` and `WithInertiaAntiforgery()`, with token rotation after
+  sign-in/sign-out.
 - **Typed end to end**: generate TypeScript declarations for your page props and typed route
   helpers from your C# contracts with `InertiaCore.TypeGen`.
 

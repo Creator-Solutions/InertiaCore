@@ -6,12 +6,73 @@ This page covers the security-sensitive parts of the adapter. For reporting vuln
 ## CSRF / antiforgery
 
 Inertia sends every visit as an `XMLHttpRequest`/`fetch` call, so requests are not submitted as HTML
-forms and ASP.NET Core's automatic form-field antiforgery no longer sees a hidden field. **The
-adapter does not wire up CSRF protection for you**: you must do it explicitly.
+forms and ASP.NET Core's automatic form-field antiforgery no longer sees a hidden field. The adapter
+ships an opt-in bridge that issues a JavaScript-readable `XSRF-TOKEN` cookie and configures
+anti-forgery to validate the `X-XSRF-TOKEN` request header the Inertia (axios) client sends
+automatically.
 
-ASP.NET Core's antiforgery service issues a request token and validates it from a request header.
-Configure the header name to the one your frontend will send and expose the token to the page (for
-example as a shared prop):
+Enable the bridge with a flag and one middleware call, placed **after** authentication and
+authorization:
+
+```csharp
+builder.Services.AddInertia(options =>
+{
+    options.Antiforgery.Enabled = true;
+});
+
+var app = builder.Build();
+
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseInertia();
+app.UseInertiaAntiforgery();
+```
+
+The bridge writes the cookie only when a request needs a token: a mutating request, or an Inertia
+page render. Static files, health probes and other plain GETs are left untouched.
+
+Protect endpoints the usual ways: `[AutoValidateAntiforgeryToken]` on MVC controllers and actions,
+or the `WithInertiaAntiforgery()` endpoint filter on Minimal APIs (Minimal APIs have no
+`RequireAntiforgery()` equivalent):
+
+```csharp
+app.MapPost("/posts", () => Results.Text("ok"))
+    .WithInertiaAntiforgery();
+```
+
+Requests without a valid token get a `400`.
+
+After signing a user in or out, rotate the token so a value issued to the previous principal cannot
+be replayed:
+
+```csharp
+app.MapPost("/logout", () =>
+{
+    // sign the user out
+    Inertia.RotateAntiforgery();
+    return Results.Text("ok");
+});
+```
+
+### CORS and cookie domain
+
+The Inertia client reads the `XSRF-TOKEN` cookie in JavaScript, so the cookie and the header only
+work when the browser is allowed to send credentials cross-origin. If the front end is served from a
+different origin than the API:
+
+- Set `Access-Control-Allow-Credentials: true` and use an explicit `Access-Control-Allow-Origin`
+  (the wildcard `*` is rejected when credentials are allowed).
+- Add `X-XSRF-TOKEN` to `Access-Control-Allow-Headers`.
+- Do not set a cross-site `Cookie.Domain` for the token cookie; leave it host-only unless the
+  front end and API share a registrable domain. For subdomain setups, set the cookie domain to the
+  shared parent domain and remember that this widens where the cookie is sent.
+
+### Manual wiring
+
+If you manage anti-forgery yourself instead of using the bridge, ASP.NET Core's antiforgery service
+can issue a request token that you validate from a header. Configure the header name to the one your
+frontend sends and expose the token to the page (for example as a shared prop):
 
 ```csharp
 builder.Services.AddAntiforgery(options =>
