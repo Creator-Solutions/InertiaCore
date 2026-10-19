@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using FluentValidation;
+using InertiaCore.FluentValidation;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
 using InertiaCore.Props;
@@ -7,6 +9,7 @@ using InertiaCoreTests.TestApp;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInertia();
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<IValidator<FluentOrder>, FluentOrderValidator>();
 
 #if NET10_0_OR_GREATER
 // Opt-in so the default host keeps its existing behaviour. The built-in validation
@@ -93,6 +96,40 @@ app.MapPost("/precognition-validation-reversed", (ValidationInput input) =>
     ValidationProbe.HandlerRuns++;
     return Results.Text("ok");
 }).WithInertiaValidation().WithInertiaPrecognition();
+
+// FluentValidation (IN-62). The validator is registered below.
+app.MapPost("/fluent", (FluentOrder order) =>
+{
+    FluentProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaFluentValidation<FluentOrder>();
+
+app.MapPost("/fluent-strict", (FluentOrder order) =>
+{
+    FluentProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaFluentValidation<FluentOrder>(new[] { "strict" });
+
+app.MapPost("/fluent-precognition", (FluentOrder order) =>
+{
+    FluentProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaFluentValidation<FluentOrder>();
+
+var fluentGroup = app.MapGroup("/fluent-group").WithInertiaFluentValidation<FluentOrder>();
+fluentGroup.MapPost("/submit", (FluentOrder order) =>
+{
+    FluentProbe.HandlerRuns++;
+    return Results.Text("ok");
+});
+
+// Only mapped when the test host asks for it: the endpoint has no validator, so building it
+// is expected to fail with the missing-validator message.
+if (builder.Configuration.GetValue<bool>("MissingFluentValidator"))
+{
+    app.MapPost("/fluent-missing", (FluentUnregistered input) => Results.Text("ok"))
+        .WithInertiaFluentValidation<FluentUnregistered>();
+}
 
 // Endpoint without validation attributes: the filter must be a no-op.
 app.MapPost("/validation-plain", (PlainValidationInput input) =>
@@ -224,4 +261,48 @@ public sealed class PlainValidationInput
 public static class ValidationProbe
 {
     public static int HandlerRuns;
+}
+
+/// <summary>Model used by the FluentValidation integration tests.</summary>
+public sealed class FluentOrder
+{
+    public string? CustomerName { get; set; }
+
+    public FluentAddress? Address { get; set; }
+
+    public string? Notes { get; set; }
+}
+
+/// <summary>Nested address used by <see cref="FluentOrder"/>.</summary>
+public sealed class FluentAddress
+{
+    public string? PostalCode { get; set; }
+}
+
+/// <summary>A type with no validator registered, for the missing-registration test.</summary>
+public sealed class FluentUnregistered
+{
+    public string? Name { get; set; }
+}
+
+/// <summary>Tracks how often a FluentValidation test endpoint handler executed.</summary>
+public static class FluentProbe
+{
+    public static int HandlerRuns;
+}
+
+/// <summary>Validator for <see cref="FluentOrder"/>. Notes is required only in the "strict" rule set.</summary>
+public sealed class FluentOrderValidator : AbstractValidator<FluentOrder>
+{
+    public FluentOrderValidator()
+    {
+        RuleFor(x => x.CustomerName).NotEmpty();
+        RuleFor(x => x.Address).NotNull();
+        RuleFor(x => x.Address!.PostalCode).NotEmpty().When(x => x.Address is not null);
+
+        RuleSet("strict", () =>
+        {
+            RuleFor(x => x.Notes).NotEmpty();
+        });
+    }
 }

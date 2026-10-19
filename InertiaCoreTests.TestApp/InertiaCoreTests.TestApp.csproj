@@ -11,6 +11,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\InertiaCore\InertiaCore.csproj" />
+        <ProjectReference Include="..\InertiaCore.FluentValidation\InertiaCore.FluentValidation.csproj" />
         <ProjectReference Include="..\InertiaCore.SourceGenerators\InertiaCore.SourceGenerators.csproj"
                           OutputItemType="Analyzer"
                           ReferenceOutputAssembly="false" />
