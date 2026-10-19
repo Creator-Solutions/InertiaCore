@@ -1,8 +1,11 @@
+using System.Text;
 using System.Text.Json;
 using InertiaCore.Extensions;
+using InertiaCore.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace InertiaCore.Services;
 
@@ -72,6 +75,16 @@ public sealed class InertiaFlashProvider : IInertiaFlashProvider
             tempData.Keep(Key);
     }
 
+    /// <inheritdoc />
+    public void Clear()
+    {
+        var context = _contextAccessor.HttpContext;
+        if (context is null)
+            return;
+
+        RemoveBag(context);
+    }
+
     private static IDictionary<string, object?>? GetBag(HttpContext context)
     {
         var tempData = GetTempData(context);
@@ -94,11 +107,30 @@ public sealed class InertiaFlashProvider : IInertiaFlashProvider
         var tempData = GetTempData(context);
         if (tempData is not null)
         {
-            tempData[Key] = JsonSerializer.Serialize(bag);
+            var json = JsonSerializer.Serialize(bag);
+
+            // Only the persisted payload is limited: the Items fallback lives for this
+            // request alone and is never written to a cookie.
+            EnsurePayloadWithinLimit(context, json);
+            tempData[Key] = json;
             return;
         }
 
         context.Items[Key] = bag;
+    }
+
+    /// <summary>
+    /// Throws <see cref="InertiaFlashPayloadTooLargeException"/> when the serialized payload
+    /// would not fit the configured cookie limit.
+    /// </summary>
+    private static void EnsurePayloadWithinLimit(HttpContext context, string json)
+    {
+        var options = context.RequestServices?.GetService<IOptions<InertiaFlashOptions>>();
+        var maxBytes = options?.Value.MaxCookiePayloadBytes ?? InertiaFlashOptions.DefaultMaxCookiePayloadBytes;
+        var actualBytes = Encoding.UTF8.GetByteCount(json);
+
+        if (actualBytes > maxBytes)
+            throw new InertiaFlashPayloadTooLargeException(actualBytes, maxBytes);
     }
 
     private static Dictionary<string, object?>? Deserialize(string json)

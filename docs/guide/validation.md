@@ -83,7 +83,8 @@ Non-Inertia failures on these endpoints are written through the other registered
 Flash data is stored in TempData. MVC provides TempData when `AddControllers` or
 `AddControllersWithViews` is called. Without it, `AddInertia()` stores the flash in an encrypted
 cookie, so a `303` redirect still carries its errors on a Minimal API-only host. The cookie is
-written when the response starts.
+written when the response starts. See [Flash messages](/guide/flash) for the flash API,
+storage options and size limits.
 
 ### Composition
 
