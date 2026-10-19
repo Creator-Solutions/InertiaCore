@@ -44,4 +44,11 @@ public class InertiaOptions
     /// to issue the token cookie and validate the request header.
     /// </summary>
     public InertiaAntiforgeryOptions Antiforgery { get; set; } = new();
+
+    /// <summary>
+    /// Options for Inertia error pages and cookie-auth redirect conversion. Enable
+    /// <see cref="InertiaStatusPagesOptions.Enabled"/> and call <c>UseInertiaStatusPages()</c>
+    /// to render the error component for handled status codes.
+    /// </summary>
+    public InertiaStatusPagesOptions StatusPages { get; set; } = new();
 }

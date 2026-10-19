@@ -10,6 +10,8 @@ using InertiaCore.Ssr;
 using InertiaCore.Utils;
 using InertiaCore.Validation;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -104,6 +106,16 @@ public static class Configure
                 if (inertia.Value.Antiforgery.Enabled)
                     antiforgery.HeaderName = inertia.Value.Antiforgery.HeaderName;
             });
+
+        // Status pages: wrap the default authorization result handler so a cookie-auth
+        // challenge against an Inertia request becomes 409 + X-Inertia-Location instead
+        // of a 302. The wrapper is inert unless InertiaOptions.StatusPages.Enabled is set.
+        // Replace (rather than add) so exactly one handler is registered.
+        services.AddAuthorization();
+        services.Replace(ServiceDescriptor.Singleton<IAuthorizationMiddlewareResultHandler>(sp =>
+            new InertiaAuthorizationMiddlewareResultHandler(
+                new AuthorizationMiddlewareResultHandler(),
+                sp.GetRequiredService<IOptions<InertiaOptions>>())));
 
 #if NET10_0_OR_GREATER
         // The built-in minimal API validation reports failures through IProblemDetailsService.

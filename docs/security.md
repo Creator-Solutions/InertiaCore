@@ -115,6 +115,14 @@ global `AutoValidateAntiforgeryToken` filter, an endpoint filter, or
 `IAntiforgery.ValidateRequestAsync`). Keep `Secure` on in production and set `SameSite`
 appropriately; only the readable XSRF token cookie should omit `HttpOnly`.
 
+## Authentication redirects
+
+When [error pages](/guide/error-pages) are enabled, an unauthenticated Inertia request to a
+protected endpoint is answered with `409 + X-Inertia-Location: <login url>` rather than a
+`302`. This is a protocol concern, not a security boundary: the login URL comes from the
+cookie handler's `LoginPath` and is never taken from user input, so it cannot be turned into
+an open redirect. Non-Inertia requests keep the standard redirect.
+
 ## Redirect validation
 
 `Inertia.Location(url)` and the redirect helpers do **not** validate the destination. Never pass a

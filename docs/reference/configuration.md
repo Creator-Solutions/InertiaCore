@@ -37,6 +37,21 @@ The `Antiforgery` object configures the opt-in XSRF cookie bridge. See
 | `SameSite` | `SameSiteMode` | `Lax` | `SameSite` policy of the token cookie. |
 | `CookiePath` | `string` | `"/"` | Path the token cookie is scoped to. |
 
+### `InertiaOptions.StatusPages`
+
+The `StatusPages` object configures the opt-in Inertia error pages. See
+[Error pages](/guide/error-pages) for usage.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Enabled` | `bool` | `false` | Render the error component for handled statuses via `UseInertiaStatusPages()`, and convert cookie-auth login redirects for Inertia requests. |
+| `Component` | `string` | `"Error"` | Component rendered for a handled status with no per-status override. |
+| `Components` | `IDictionary<int, string>` | `{}` | Per-status component overrides. |
+| `StatusCodes` | `IReadOnlyCollection<int>` | `401, 403, 404, 419, 500, 503` | The status codes rendered through Inertia. |
+| `Messages` | `IDictionary<int, string>` | `{}` | Per-status message overrides. Built-in defaults apply otherwise. |
+| `MessageFactory` | `Func<HttpContext, int, string>?` | `null` | Resolves the message for a status; takes precedence over `Messages`. |
+| `RespectDeveloperExceptionPage` | `bool` | `true` | In Development, preserve the developer exception page for `500` instead of rendering the Inertia error page. |
+
 ## `AddViteHelper`
 
 `AddViteHelper` configures the Vite integration with `ViteOptions`:

@@ -1,5 +1,36 @@
 # Changelog
 
+### Status pages (IN-65)
+
+Opt-in Inertia error pages: a handled status code renders your error component instead of
+an empty response, and a cookie-auth login redirect becomes an Inertia location response.
+
+#### Added
+
+- **`InertiaOptions.StatusPages`** (`InertiaStatusPagesOptions`) with `Enabled`, `Component`
+  (`Error`), per-status `Components` and `Messages`, `StatusCodes`, `MessageFactory` and
+  `RespectDeveloperExceptionPage`. Handles `401`, `403`, `404`, `419`, `500` and `503` by
+  default, each with a built-in message.
+- **`UseInertiaStatusPages()`** (`InertiaCore.Extensions`) — middleware that renders the
+  configured error component with `{ status, message }` props for a handled status when the
+  request is an Inertia request. A response is only rewritten when nothing has been written
+  yet, so the developer exception page, `ProblemDetails` and streamed bodies are preserved.
+- **`InertiaAuthorizationMiddlewareResultHandler`** — wraps the default authorization result
+  handler so an unauthenticated Inertia request to a protected endpoint is answered with
+  `409` + `X-Inertia-Location` (the login URL) instead of a bare `302`. Registered by
+  `AddInertia()` and active when `StatusPages.Enabled` is set.
+
+#### Notes
+
+- No breaking change to the existing public API. All additions are new members; status pages
+  are disabled by default.
+- Non-Inertia requests are never affected: they keep the host's default status handling.
+- `UseInertiaStatusPages()` must be registered after `UseRouting` and **before**
+  `UseAuthentication`/`UseAuthorization`, since authorization short-circuits with the final
+  status and does not call further middleware. See [Error pages](/guide/error-pages).
+
+---
+
 ### Antiforgery (IN-64)
 
 An opt-in bridge that makes ASP.NET Core anti-forgery work with the Inertia client's

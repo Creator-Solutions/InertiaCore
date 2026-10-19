@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using FluentValidation;
 using InertiaCore;
 using InertiaCore.FluentValidation;
@@ -6,15 +7,39 @@ using InertiaCore.Contracts;
 using InertiaCore.Extensions;
 using InertiaCore.Props;
 using InertiaCoreTests.TestApp;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInertia(options =>
 {
     // Opt-in anti-forgery bridge for the IN-64 integration tests.
     options.Antiforgery.Enabled = builder.Configuration.GetValue<bool>("UseAntiforgery");
+
+    // Opt-in status pages for the IN-65 integration tests.
+    options.StatusPages.Enabled = builder.Configuration.GetValue<bool>("UseStatusPages");
 });
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IValidator<FluentOrder>, FluentOrderValidator>();
+
+// Opt-in cookie authentication for the IN-65 authorization result handler tests.
+if (builder.Configuration.GetValue<bool>("UseAuth"))
+{
+    builder.Services
+        .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        .AddCookie(options =>
+        {
+            options.LoginPath = "/auth/login";
+            options.AccessDeniedPath = "/auth/denied";
+
+            // Emit a bare 403 for a forbidden principal so the status-pages middleware can
+            // render the error component, rather than redirecting to the access-denied path.
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            };
+        });
+}
 
 // Opt-in for the large-flash integration tests: a real distributed cache backs flash.
 if (builder.Configuration.GetValue<bool>("UseDistributedFlash"))
@@ -34,7 +59,18 @@ if (builder.Configuration.GetValue<bool>("UseBuiltInValidation"))
 
 var app = builder.Build();
 app.UseRouting();
+
 app.UseInertia();
+
+// Inertia error pages (IN-65). Placed after routing so the endpoint is known, and before
+// authentication/authorization so a short-circuiting 401/403 is still observed.
+app.UseInertiaStatusPages();
+
+if (builder.Configuration.GetValue<bool>("UseAuth"))
+{
+    app.UseAuthentication();
+    app.UseAuthorization();
+}
 
 // Anti-forgery bridge (IN-64). Placed after routing/auth in a real app.
 app.UseInertiaAntiforgery();
@@ -191,6 +227,16 @@ app.MapPost("/csrf", () =>
 }).WithInertiaAntiforgery();
 
 app.MapGet("/csrf/page", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+// Status-page probes (IN-65): endpoints that return a bare status with no body, so the
+// status-pages middleware can render the configured error component.
+app.MapGet("/status/403", () => Results.StatusCode(StatusCodes.Status403Forbidden));
+app.MapGet("/status/404", () => Results.StatusCode(StatusCodes.Status404NotFound));
+app.MapGet("/status/419", () => Results.StatusCode(419));
+app.MapGet("/status/500", () => Results.StatusCode(StatusCodes.Status500InternalServerError));
+app.MapGet("/status/503", () => Results.StatusCode(StatusCodes.Status503ServiceUnavailable));
+app.MapGet("/status/page", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));
 
 app.MapGet("/protocol/target", async (IInertia inertia) =>
