@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using FluentValidation;
+using InertiaCore;
 using InertiaCore.FluentValidation;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
@@ -10,6 +11,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInertia();
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IValidator<FluentOrder>, FluentOrderValidator>();
+
+// Opt-in for the large-flash integration tests: a real distributed cache backs flash.
+if (builder.Configuration.GetValue<bool>("UseDistributedFlash"))
+{
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddInertiaDistributedCacheFlash();
+}
 
 #if NET10_0_OR_GREATER
 // Opt-in so the default host keeps its existing behaviour. The built-in validation
@@ -140,6 +148,31 @@ app.MapPost("/validation-plain", (PlainValidationInput input) =>
 
 // Renders the page that a 303 redirect lands on, so flashed errors can be read back.
 app.MapGet("/validation/page", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+// Flash (IN-63): a POST flashes a value and redirects; the page render exposes it once.
+app.MapPost("/flash", (HttpContext context) =>
+{
+    Inertia.Flash("success", "Saved");
+    context.Response.Headers.Location = "/flash/page";
+    return Results.StatusCode(StatusCodes.Status303SeeOther);
+});
+
+app.MapPost("/flash-service", (HttpContext context, IInertia inertia) =>
+{
+    inertia.Flash("notice", "From IInertia");
+    context.Response.Headers.Location = "/flash/page";
+    return Results.StatusCode(StatusCodes.Status303SeeOther);
+});
+
+app.MapPost("/flash-large", (HttpContext context) =>
+{
+    Inertia.Flash("payload", new string('x', 8000));
+    context.Response.Headers.Location = "/flash/page";
+    return Results.StatusCode(StatusCodes.Status303SeeOther);
+});
+
+app.MapGet("/flash/page", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));
 
 app.MapGet("/protocol/target", async (IInertia inertia) =>

@@ -61,6 +61,7 @@ export default defineConfig({
           { text: 'Shared data', link: '/guide/shared-data' },
           { text: 'Asset versioning', link: '/guide/versioning' },
           { text: 'Validation', link: '/guide/validation' },
+          { text: 'Flash messages', link: '/guide/flash' },
           { text: 'Precognition', link: '/guide/precognition' },
           { text: 'Server-side rendering', link: '/guide/ssr' },
           { text: 'Vite integration', link: '/guide/vite' },

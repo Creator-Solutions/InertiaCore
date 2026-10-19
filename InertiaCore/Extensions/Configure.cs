@@ -82,6 +82,9 @@ public static class Configure
         // Flash persistence across requests (TempData-backed by default).
         services.TryAddScoped<IInertiaFlashProvider, InertiaFlashProvider>();
 
+        // Size limit for cookie-backed flash payloads.
+        services.AddOptions<InertiaFlashOptions>();
+
         // TryAddScoped so applications (and the validation epic) can replace the
         // default DataAnnotations-based validator with their own implementation.
         services.TryAddScoped<IInertiaRequestValidator, DataAnnotationsRequestValidator>();

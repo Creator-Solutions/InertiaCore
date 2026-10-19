@@ -46,9 +46,13 @@ public interface IInertia
     void Share(IDictionary<string, object?> data);
 
     /// <summary>
-    /// Share a flash prop that will only be available for the current request.
-    /// Flash props are merged after shared props but before component props.
+    /// Share a flash value that is shown on the next Inertia render and cleared after it.
+    /// Flash values are exposed under the <c>flash</c> prop, for example
+    /// <c>page.props.flash.success</c>, and are written to <c>IInertiaFlashProvider</c> so
+    /// they survive a redirect. Prefetch requests do not consume them.
     /// </summary>
+    /// <param name="key">The flash key (will be camelCased).</param>
+    /// <param name="value">The value to flash.</param>
     void Flash(string key, object? value);
 
     /// <summary>

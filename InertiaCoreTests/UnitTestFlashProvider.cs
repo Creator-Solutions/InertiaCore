@@ -3,9 +3,14 @@ using InertiaCore.Contracts;
 using InertiaCore.Models;
 using InertiaCore.Services;
 using InertiaCore.Utils;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Text;
+using System.Text.Json;
 
 namespace InertiaCoreTests;
 
@@ -71,6 +76,61 @@ public class UnitTestFlashProvider
             Assert.That(provider.Pull(), Is.Empty);
             Assert.DoesNotThrow(() => provider.Reflash());
         });
+    }
+
+    [Test]
+    [Description("Clear discards flash that has not been pulled yet.")]
+    public void Clear_RemovesPendingFlash()
+    {
+        var (provider, _) = Create();
+        provider.Flash("status", "ok");
+
+        provider.Clear();
+
+        Assert.That(provider.Pull(), Is.Empty);
+    }
+
+    [Test]
+    [Description("A payload that exactly fills the cookie limit is stored.")]
+    public void Flash_AtCookieLimit_IsAllowed()
+    {
+        var max = SerializedBagBytes();
+        var (provider, _) = CreateWithCookieStore(max);
+
+        Assert.DoesNotThrow(() => provider.Flash("k", "v"));
+    }
+
+    [Test]
+    [Description("A payload above the cookie limit throws the documented exception.")]
+    public void Flash_AboveCookieLimit_ThrowsDocumentedException()
+    {
+        var max = SerializedBagBytes() - 1;
+        var (provider, _) = CreateWithCookieStore(max);
+
+        var exception = Assert.Throws<InertiaFlashPayloadTooLargeException>(() => provider.Flash("k", "v"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.ActualBytes, Is.EqualTo(max + 1));
+            Assert.That(exception.MaxBytes, Is.EqualTo(max));
+            Assert.That(exception.Message, Does.Contain("AddInertiaDistributedCacheFlash"));
+        });
+    }
+
+    private static int SerializedBagBytes() =>
+        Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(
+            new Dictionary<string, object?> { ["k"] = "v" }));
+
+    private static (InertiaFlashProvider Provider, DefaultHttpContext Context) CreateWithCookieStore(int maxBytes)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDataProtection();
+        services.Configure<InertiaFlashOptions>(options => options.MaxCookiePayloadBytes = maxBytes);
+
+        var context = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        var accessor = new HttpContextAccessor { HttpContext = context };
+        return (new InertiaFlashProvider(accessor), context);
     }
 
     [Test]

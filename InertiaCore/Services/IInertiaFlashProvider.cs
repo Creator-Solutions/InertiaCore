@@ -31,4 +31,13 @@ public interface IInertiaFlashProvider
     /// version-mismatch <c>409</c> so flash and errors survive the follow-up reload.
     /// </summary>
     void Reflash();
+
+    /// <summary>
+    /// Discards the flash data stored for the current request so nothing is shown on the
+    /// next render. The default implementation does nothing; implement it to support
+    /// discarding flash early.
+    /// </summary>
+    void Clear()
+    {
+    }
 }

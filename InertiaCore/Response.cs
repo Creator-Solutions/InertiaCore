@@ -170,8 +170,8 @@ public class Response : IActionResult, IResult
         _rescuedProps.Clear();
 
         props = ResolveSharedProps(props);
-        props = ResolveFlashProps(props);
         props = ApplyPartialFilter(props);
+        props = ApplyFlashProps(props);
         props = ResolveAlways(props);
 
         var isPartial = _context!.IsInertiaPartialComponent(_component);
@@ -212,11 +212,18 @@ public class Response : IActionResult, IResult
     }
 
     /// <summary>
-    /// Resolve flash props. Persisted flash (from the previous request, via the flash
-    /// provider) and current-request flash (<see cref="InertiaState.FlashProps"/>) are
-    /// merged after shared props. Prefetch requests do not consume persisted flash.
+    /// Expose flash data as the <c>flash</c> prop: persisted flash (from the previous
+    /// request, via the flash provider) merged with current-request flash
+    /// (<see cref="InertiaState.FlashProps"/>). The persisted flash is consumed here, so it
+    /// appears exactly once. Prefetch requests do not consume persisted flash.
     /// </summary>
-    private Dictionary<string, object?> ResolveFlashProps(Dictionary<string, object?> props)
+    /// <remarks>
+    /// Runs after the partial filter so flash that has already been consumed cannot be
+    /// dropped from a partial reload, and before <c>errors</c> is rendered so validation
+    /// errors flashed with the flash data are restored into the error bag first.
+    /// The <c>flash</c> prop is omitted when there is nothing to show.
+    /// </remarks>
+    private Dictionary<string, object?> ApplyFlashProps(Dictionary<string, object?> props)
     {
         var persisted = _flashProvider?.Pull() ?? EmptyProps;
         persisted = RestoreFlashedErrors(persisted);
@@ -225,16 +232,15 @@ public class Response : IActionResult, IResult
         if (persisted.Count == 0 && current.Count == 0)
             return props;
 
-        var result = new Dictionary<string, object?>(props.Count + persisted.Count + current.Count);
-        foreach (var (key, value) in props)
-            result[key] = value;
-
+        var flash = new Dictionary<string, object?>(persisted.Count + current.Count, StringComparer.Ordinal);
         foreach (var (key, value) in persisted)
-            result[key] = value;
+            flash[key] = value;
 
         foreach (var (key, value) in current)
-            result[key] = value;
+            flash[key] = value;
 
+        var result = new Dictionary<string, object?>(props, props.Comparer);
+        result["flash"] = flash;
         return result;
     }
 

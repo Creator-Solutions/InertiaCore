@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
 using InertiaCore.Props;
+using InertiaCore.Services;
 using InertiaCore.Utils;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
@@ -121,6 +122,44 @@ public static class Inertia
 
         foreach (var (key, value) in data)
             SharedData[key.ToCamelCase()] = value;
+    }
+
+    /// <summary>
+    /// Shares a flash value that is shown on the next Inertia render and cleared after it.
+    /// Flash values are exposed under the <c>flash</c> prop, for example
+    /// <c>page.props.flash.success</c>.
+    /// </summary>
+    /// <param name="key">The flash key (will be camelCased).</param>
+    /// <param name="value">The value to flash.</param>
+    /// <exception cref="InvalidOperationException">No HTTP request is active.</exception>
+    public static void Flash(string key, object? value)
+    {
+        if (TryGetInertiaService(out var inertia))
+        {
+            inertia.Flash(key, value);
+            return;
+        }
+
+        throw new InvalidOperationException(
+            "Inertia.Flash cannot be used outside of an active HTTP request. " +
+            "Inject InertiaCore.Contracts.IInertia via dependency injection instead of using the static Inertia facade.");
+    }
+
+    /// <summary>
+    /// Discards the flash data stored for the current request, so nothing is shown on the
+    /// next Inertia render.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No HTTP request is active.</exception>
+    public static void ClearFlash()
+    {
+        if (RequestServices?.GetService(typeof(IInertiaFlashProvider)) is IInertiaFlashProvider provider)
+        {
+            provider.Clear();
+            return;
+        }
+
+        throw new InvalidOperationException(
+            "Inertia.ClearFlash cannot be used outside of an active HTTP request.");
     }
 
     public static AlwaysProp Always(string value) => GetFactory().Always(value);

@@ -1,8 +1,30 @@
 # Changelog
 
-## Unreleased
+### Flash (IN-63)
 
-### Minimal API Validation (IN-61)
+A cross-request flash bag that survives a redirect and is exposed exactly once to the next Inertia render. This extends the existing flash infrastructure (shared cookies/TempData) and introduces an opt-in distributed-cache store for large payloads.
+
+#### Added
+
+- **`IInertiaFlashProvider.Clear()`** — clears any pending flash (default interface method). `InertiaFlashProvider` implements it; `DistributedCacheFlashProvider` implements it.
+- **`Inertia.Flash(string key, object? value)`** and **`Inertia.ClearFlash()`** — static helpers to write/clear flash from anywhere inside a request. They throw `InvalidOperationException` outside an active request.
+- **`InertiaFlashOptions`** (`DefaultMaxCookiePayloadBytes = 4096`) — configures the maximum serialized flash payload allowed for the cookie-backed store. Set via `services.Configure<InertiaFlashOptions>(o => o.MaxCookiePayloadBytes = ...)`.
+- **`InertiaFlashPayloadTooLargeException`** — thrown by `InertiaFlashProvider` when the serialized bag exceeds `MaxCookiePayloadBytes`. The message points to `AddInertiaDistributedCacheFlash()` as the recommended remedy.
+- **`DistributedCacheFlashProvider`** — `IInertiaFlashProvider` backed by `IDistributedCache` (uses `InertiaFlashCacheId` encrypted cookie + 1-hour lifetime). Prefetch requests do not consume flash.
+- **`FlashExtensions.AddInertiaDistributedCacheFlash()`** — replaces the default `IInertiaFlashProvider` with `DistributedCacheFlashProvider` (validates `IDistributedCache` is registered).
+- **`Response.ApplyFlashProps`** — exposes flash under the single **`flash`** prop on the next Inertia page render. Flashed values are merged from the active provider and consumed after the response is built.
+
+#### Changed
+
+- `IInertia.Flash` XML docs updated to describe the next-render `flash` prop, provider persistence, and prefetch behavior.
+- `InertiaCore.Response` merges flash **after** partial filters, so consumed flash is never dropped by partial rendering and flashed errors remain available to the render.
+- **`flash` prop shape** — the library now exposes a single object `flash` prop containing all flashed keys (`page.props.flash.*`). This is a **behavior change** relative to previous builds that exposed individual flash keys at the top level of `props`. Components that relied on top-level flash keys (e.g. `props.flashMessage`) must access `props.flash.flashMessage` or share individual keys in the same shape. See the Flash guide for details.
+- `AddInertia()` registers `AddOptions<InertiaFlashOptions>()` so options are always available. 
+
+#### Notes
+
+- No breaking public API signatures except the documented change in how flash appears in the Inertia `props` object. Flag this change in PR notes if needed.
+- Only `IDistributedCache`-backed flash is shipped (no session provider). The cookie store remains the default for small payloads.
 
 Brings Minimal API endpoints to parity with MVC error handling. Arguments bound to an endpoint
 can be validated with DataAnnotations, and failures are reported through Inertia: errors go to
