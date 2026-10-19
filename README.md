@@ -14,7 +14,7 @@ simplicity of server-side routing and controllers.
 Supports ASP.NET Core MVC and Minimal APIs, Inertia.js v3, and Vue, React and other
 Inertia-compatible frontend frameworks.
 
-> **Documentation:** [https://inertiacore.dev](https://creator-solutions.github.io/InertiaCore/)
+> **Documentation:** [https://creator-solutions.github.io/InertiaCore/](https://creator-solutions.github.io/InertiaCore/)
 
 ## Quick start
 
