@@ -35,13 +35,21 @@ internal sealed class ValidationProblemResult : IResult
         if (_viaProblemDetailsService)
         {
             var service = httpContext.RequestServices.GetService<IProblemDetailsService>();
-            if (service is not null && await service.TryWriteAsync(new ProblemDetailsContext
-                {
-                    HttpContext = httpContext,
-                    ProblemDetails = CreateProblem(_errors)
-                }))
+            if (service is not null)
             {
-                return;
+                // Set the status before writing: on .NET 10 the writer that handles
+                // HttpValidationProblemDetails keeps the response's current status code, so an
+                // unset 200 would leave a validation failure reported as success.
+                httpContext.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+
+                if (await service.TryWriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = httpContext,
+                        ProblemDetails = CreateProblem(_errors)
+                    }))
+                {
+                    return;
+                }
             }
         }
 

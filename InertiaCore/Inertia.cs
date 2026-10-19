@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 
 [assembly: InternalsVisibleTo("InertiaCoreTests")]
+[assembly: InternalsVisibleTo("InertiaCore.FluentValidation")]
 
 namespace InertiaCore;
 
