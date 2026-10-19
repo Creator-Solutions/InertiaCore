@@ -8,7 +8,11 @@ using InertiaCore.Props;
 using InertiaCoreTests.TestApp;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddInertia();
+builder.Services.AddInertia(options =>
+{
+    // Opt-in anti-forgery bridge for the IN-64 integration tests.
+    options.Antiforgery.Enabled = builder.Configuration.GetValue<bool>("UseAntiforgery");
+});
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IValidator<FluentOrder>, FluentOrderValidator>();
 
@@ -31,6 +35,9 @@ if (builder.Configuration.GetValue<bool>("UseBuiltInValidation"))
 var app = builder.Build();
 app.UseRouting();
 app.UseInertia();
+
+// Anti-forgery bridge (IN-64). Placed after routing/auth in a real app.
+app.UseInertiaAntiforgery();
 
 app.MapGet("/merge", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new
@@ -173,6 +180,17 @@ app.MapPost("/flash-large", (HttpContext context) =>
 });
 
 app.MapGet("/flash/page", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+// Anti-forgery bridge (IN-64): a Minimal API endpoint that validates the request token, plus
+// a page render that issues the token cookie.
+app.MapPost("/csrf", () =>
+{
+    AntiForgeryProbe.HandlerRuns++;
+    return Results.Text("ok");
+}).WithInertiaAntiforgery();
+
+app.MapGet("/csrf/page", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));
 
 app.MapGet("/protocol/target", async (IInertia inertia) =>

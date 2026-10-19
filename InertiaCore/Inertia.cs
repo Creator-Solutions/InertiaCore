@@ -2,11 +2,16 @@
 using System.Runtime.CompilerServices;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
+using InertiaCore.Middleware;
+using InertiaCore.Models;
 using InertiaCore.Props;
 using InertiaCore.Services;
 using InertiaCore.Utils;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 [assembly: InternalsVisibleTo("InertiaCoreTests")]
 [assembly: InternalsVisibleTo("InertiaCore.FluentValidation")]
@@ -160,6 +165,44 @@ public static class Inertia
 
         throw new InvalidOperationException(
             "Inertia.ClearFlash cannot be used outside of an active HTTP request.");
+    }
+
+    /// <summary>
+    /// Rotates the Inertia <c>XSRF-TOKEN</c> cookie for the current request. Call this
+    /// after signing a user in or out so a token issued to the previous principal cannot
+    /// be replayed against the new session.
+    /// </summary>
+    /// <remarks>
+    /// Requires the anti-forgery bridge to be enabled
+    /// (<c>InertiaOptions.Antiforgery.Enabled = true</c> and <c>UseInertiaAntiforgery()</c>).
+    /// The new token is written when the response starts.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// No HTTP request is active, or the anti-forgery bridge is not enabled.
+    /// </exception>
+    public static void RotateAntiforgery()
+    {
+        var context = _contextAccessor?.HttpContext;
+        if (context is null)
+        {
+            throw new InvalidOperationException(
+                "Inertia.RotateAntiforgery cannot be used outside of an active HTTP request.");
+        }
+
+        var options = context.RequestServices.GetService(typeof(IOptions<InertiaOptions>)) as IOptions<InertiaOptions>;
+        if (options?.Value.Antiforgery.Enabled != true
+            || context.RequestServices.GetService(typeof(IAntiforgery)) is not IAntiforgery antiforgery)
+        {
+            throw new InvalidOperationException(
+                "Inertia.RotateAntiforgery requires the anti-forgery bridge. " +
+                "Enable InertiaOptions.Antiforgery.Enabled and call UseInertiaAntiforgery().");
+        }
+
+        var settings = options.Value.Antiforgery;
+        var token = InertiaAntiforgeryMiddleware.GetToken(context, antiforgery);
+
+        // Replaces the pending token, so the single scheduled write emits the rotated value.
+        InertiaAntiforgeryMiddleware.ScheduleCookie(context, settings, token);
     }
 
     public static AlwaysProp Always(string value) => GetFactory().Always(value);

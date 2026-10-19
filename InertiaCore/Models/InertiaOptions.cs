@@ -37,4 +37,11 @@ public class InertiaOptions
     /// Disabled by default so existing applications are unaffected.
     /// </summary>
     public bool ValidatePages { get; set; } = false;
+
+    /// <summary>
+    /// Options for the Inertia <c>XSRF-TOKEN</c> cookie bridge. Enable
+    /// <see cref="InertiaAntiforgeryOptions.Enabled"/> and call <c>UseInertiaAntiforgery()</c>
+    /// to issue the token cookie and validate the request header.
+    /// </summary>
+    public InertiaAntiforgeryOptions Antiforgery { get; set; } = new();
 }

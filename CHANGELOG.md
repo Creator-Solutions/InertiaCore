@@ -1,5 +1,42 @@
 # Changelog
 
+### Antiforgery (IN-64)
+
+An opt-in bridge that makes ASP.NET Core anti-forgery work with the Inertia client's
+`XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header convention, without hand-written middleware.
+
+#### Added
+
+- **`InertiaOptions.Antiforgery`** (`InertiaAntiforgeryOptions`) with `Enabled`, `CookieName`
+  (`XSRF-TOKEN`), `HeaderName` (`X-XSRF-TOKEN`), `SecurePolicy`, `SameSite` and `CookiePath`.
+- **`UseInertiaAntiforgery()`** (`InertiaCore.Extensions`) — middleware that generates a token
+  through `IAntiforgery` and writes it to a JavaScript-readable `XSRF-TOKEN` cookie. The cookie is
+  written only when the request needs a token: a mutating request or an Inertia page render. Static
+  files, probes and other plain GETs are left untouched.
+- **`WithInertiaAntiforgery()`** on `RouteHandlerBuilder` and `RouteGroupBuilder` — a Minimal API
+  endpoint filter that validates the request token and returns `400` on failure (Minimal APIs have
+  no `RequireAntiforgery()` equivalent).
+- **`Inertia.RotateAntiforgery()`** — rotates the token cookie for the current request; call it
+  after sign-in or sign-out so a token bound to the previous principal cannot be replayed.
+- `AddInertia()` registers anti-forgery and aligns `AntiforgeryOptions.HeaderName` with the
+  configured header name.
+
+#### Changed
+
+- `AddInertia()` now calls `AddAntiforgery()`, so `[AutoValidateAntiforgeryToken]` and Minimal API
+  form endpoints resolve the anti-forgery services. When the bridge is disabled the anti-forgery
+  header keeps its framework default, so existing applications are unaffected.
+
+#### Notes
+
+- No breaking change to the existing public API. All additions are new members; the bridge is
+  disabled by default.
+- The middleware must be placed after authentication and authorization. Cross-origin front ends
+  need `Access-Control-Allow-Credentials`, an explicit origin and `X-XSRF-TOKEN` in the allowed
+  headers; see [CSRF / antiforgery](/security).
+
+---
+
 ### Flash (IN-63)
 
 A cross-request flash bag that survives a redirect and is exposed exactly once to the next Inertia render. This extends the existing flash infrastructure (shared cookies/TempData) and introduces an opt-in distributed-cache store for large payloads.

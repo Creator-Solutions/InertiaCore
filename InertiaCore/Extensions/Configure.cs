@@ -9,6 +9,7 @@ using InertiaCore.Services.Version;
 using InertiaCore.Ssr;
 using InertiaCore.Utils;
 using InertiaCore.Validation;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -91,6 +92,18 @@ public static class Configure
 
         // Data protection backs the cookie-based flash store used when MVC TempData is absent.
         services.AddDataProtection();
+
+        // Anti-forgery bridge: always register the service so [AutoValidateAntiforgeryToken]
+        // and form endpoints resolve it, but only align the validation header with the
+        // Inertia client when the bridge is enabled. The XSRF cookie itself is written by
+        // UseInertiaAntiforgery().
+        services.AddAntiforgery();
+        services.AddOptions<AntiforgeryOptions>()
+            .Configure<IOptions<InertiaOptions>>((antiforgery, inertia) =>
+            {
+                if (inertia.Value.Antiforgery.Enabled)
+                    antiforgery.HeaderName = inertia.Value.Antiforgery.HeaderName;
+            });
 
 #if NET10_0_OR_GREATER
         // The built-in minimal API validation reports failures through IProblemDetailsService.
