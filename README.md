@@ -66,6 +66,8 @@ wire up the frontend.
 - **Anti-forgery bridge**: opt-in `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header wiring that works with
   `[AutoValidateAntiforgeryToken]` and `WithInertiaAntiforgery()`, with token rotation after
   sign-in/sign-out.
+- **Error pages**: opt-in Inertia error component for `401`/`403`/`404`/`419`/`500`/`503`, with
+  cookie-auth login redirects converted to `409 + X-Inertia-Location` for Inertia requests.
 - **Typed end to end**: generate TypeScript declarations for your page props and typed route
   helpers from your C# contracts with `InertiaCore.TypeGen`.
 

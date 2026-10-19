@@ -62,6 +62,7 @@ export default defineConfig({
           { text: 'Asset versioning', link: '/guide/versioning' },
           { text: 'Validation', link: '/guide/validation' },
           { text: 'Flash messages', link: '/guide/flash' },
+          { text: 'Error pages', link: '/guide/error-pages' },
           { text: 'Precognition', link: '/guide/precognition' },
           { text: 'Server-side rendering', link: '/guide/ssr' },
           { text: 'Vite integration', link: '/guide/vite' },
