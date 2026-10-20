@@ -1,5 +1,39 @@
 # Changelog
 
+### .NET Aspire hosting (IN-70)
+
+Run the Vite dev server and the Node SSR process as .NET Aspire resources. A new
+`InertiaCore.Aspire.Hosting` package adds both processes to the application model so their
+endpoints, health and logs appear in the Aspire dashboard, and wires the web project to them
+through environment variables.
+
+#### Added
+
+- **`InertiaCore.Aspire.Hosting`** package with `AddInertiaViteApp`, `AddInertiaSsrApp` and
+  `WithInertiaReferences`. `AddInertiaViteApp` wraps `AddViteApp` and `AddInertiaSsrApp` wraps
+  `AddNodeApp` with an HTTP endpoint on `PORT` and a `/health` check; `WithInertiaReferences`
+  makes the web project wait for both resources and injects `Vite__HotUrl`, `Inertia__SsrEnabled`
+  and `Inertia__SsrUrl`.
+- **`ViteOptions.HotUrl`** — a dev server base URL supplied by an orchestrator. When set, the Vite
+  helper runs in hot mode and resolves assets against it instead of reading the `hot` file.
+- **`AddInertia(IConfiguration, ...)` and `AddViteHelper(IConfiguration, ...)`** overloads that bind
+  `InertiaOptions` and `ViteOptions` from the `Inertia` and `Vite` configuration sections, so an
+  orchestrator can supply values through environment variables.
+- **`samples/aspire`** — an AppHost, an Inertia web project and a Vite frontend demonstrating the
+  full wiring.
+
+#### Notes
+
+- Aspire owns the Node SSR process under this package. Leave `InertiaOptions.Ssr.Managed` disabled
+  for the web project and let `Inertia__SsrUrl` point at the Aspire resource. The managed process
+  feature (IN-68) remains for deployments without Aspire.
+- No breaking change to the existing public API. All core additions are new members and new
+  overloads; the default file-based hot detection is unchanged when `HotUrl` is left unset.
+- Aspire 13.x depends on the 10.0.x `Microsoft.Extensions.*` packages, so the Aspire integration
+  tests live in a net10.0-only test project; the library still targets net8.0, net9.0 and net10.0.
+
+---
+
 ### Managed SSR process lifecycle (IN-68)
 
 Let the adapter run your Node SSR bundle instead of managing it yourself. An opt-in hosted service

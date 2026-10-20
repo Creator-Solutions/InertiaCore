@@ -98,6 +98,7 @@ builder.Services.AddViteHelper(options =>
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `HotFile` | `string` | `"hot"` | Path to the Vite "hot" file. |
+| `HotUrl` | `string?` | `null` | Base URL of a running dev server supplied by an orchestrator such as .NET Aspire. When set, assets resolve against this URL instead of reading `HotFile`. |
 | `BuildDirectory` | `string?` | `"build"` | Path to the build directory. |
 | `ManifestFilename` | `string` | `"manifest.json"` | Name of the manifest file. |
 | `PublicDirectory` | `string` | `"wwwroot"` | Path to the public directory. |
@@ -110,6 +111,30 @@ builder.Services.AddViteHelper(options =>
 | `ScriptTagAttributes` | `IList<...>` | empty | Extra attributes applied to generated script tags. |
 | `StyleTagAttributes` | `IList<...>` | empty | Extra attributes applied to generated stylesheet tags. |
 | `PreloadTagAttributes` | `IList<...>` | empty | Extra attributes applied to generated preload/modulepreload tags. |
+
+## Binding from configuration
+
+Both `AddInertia` and `AddViteHelper` have overloads that bind their options from an
+`IConfiguration` section before applying the delegate:
+
+```csharp
+builder.Services.AddInertia(builder.Configuration, options =>
+{
+    // Applied after the Inertia section is bound.
+});
+
+builder.Services.AddViteHelper(builder.Configuration);
+```
+
+The `Inertia` section binds to `InertiaOptions` and the `Vite` section binds to
+`ViteOptions`. This lets an orchestrator such as
+[.NET Aspire](/guide/aspire) supply values through environment variables:
+
+| Setting | Maps to |
+| --- | --- |
+| `Inertia__SsrEnabled` | `InertiaOptions.SsrEnabled` |
+| `Inertia__SsrUrl` | `InertiaOptions.SsrUrl` |
+| `Vite__HotUrl` | `ViteOptions.HotUrl` |
 
 ## Minimal API route dump
 

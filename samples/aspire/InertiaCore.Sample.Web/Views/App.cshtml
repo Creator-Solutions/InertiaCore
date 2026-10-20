@@ -1,0 +1,15 @@
+@using InertiaCore
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title inertia>InertiaCore Aspire sample</title>
+    @Vite.ReactRefresh()
+    @await Vite.InputAsync("src/main.tsx")
+    @await Inertia.Head(Model)
+</head>
+<body>
+    @await Inertia.Html(Model)
+</body>
+</html>
