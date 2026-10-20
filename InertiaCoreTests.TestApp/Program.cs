@@ -105,6 +105,15 @@ if (builder.Configuration.GetValue<bool>("UseManagedSsr"))
     });
 }
 
+// Development-time Vite dev server helper (IN-71). Opt-in; the integration test registers a
+// launcher (through ConfigureTestServices) that runs a Node fixture in place of the package
+// manager, so the start/ready/shutdown lifecycle is exercised without npm.
+if (builder.Configuration.GetValue<bool>("UseViteDevServer"))
+{
+    builder.Services.AddViteHelper(options =>
+        options.PublicDirectory = builder.Configuration["Vite:PublicDirectory"] ?? "wwwroot");
+}
+
 #if NET10_0_OR_GREATER
 // Opt-in so the default host keeps its existing behaviour. The built-in validation
 // integration tests set this flag.
@@ -118,6 +127,16 @@ var app = builder.Build();
 app.UseRouting();
 
 app.UseInertia();
+
+// Development-time Vite dev server helper (IN-71). No-op outside Development.
+if (builder.Configuration.GetValue<bool>("UseViteDevServer"))
+{
+    app.UseViteDevServer(options =>
+    {
+        options.ScriptName = "dev";
+        options.ReadyTimeout = TimeSpan.FromSeconds(20);
+    });
+}
 
 // Inertia error pages (IN-65). Placed after routing so the endpoint is known, and before
 // authentication/authorization so a short-circuiting 401/403 is still observed.

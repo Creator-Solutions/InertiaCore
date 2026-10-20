@@ -1,5 +1,6 @@
 using System.Net;
 using InertiaCore.Contracts;
+using InertiaCore.DevServer;
 using InertiaCore.Filters;
 using InertiaCore.Middleware;
 using InertiaCore.Models;
@@ -210,6 +211,13 @@ public static class Configure
         Action<ViteOptions>? options = null)
     {
         services.AddSingleton<IViteBuilder, ViteBuilder>();
+
+        // Dev-time helper launched by UseViteDevServer(). Registered here so a host can
+        // swap in a test double; the extension falls back to a default when absent. The
+        // HttpClient factory probes whether an already-running dev server is reachable.
+        services.AddHttpClient();
+        services.TryAddSingleton<IViteDevProcessLauncher, ViteDevProcessLauncher>();
+
         if (options != null) services.Configure(options);
 
         return services;
