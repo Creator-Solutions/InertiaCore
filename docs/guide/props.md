@@ -29,6 +29,61 @@ public IActionResult Index()
 }
 ```
 
+## Resolving props from the container
+
+Instead of computing a prop inline, you can register a class with the DI container and let
+InertiaCore resolve it from the request scope. The class receives its dependencies through
+constructor injection, so endpoints stay free of data-access code.
+
+```csharp
+public sealed class UsersProp
+{
+    private readonly AppDbContext _context;
+
+    public UsersProp(AppDbContext context) => _context = context;
+
+    public IReadOnlyList<User> Users => _context.Users.ToList();
+}
+
+// Program.cs
+builder.Services.AddScoped<UsersProp>();
+
+// Endpoint
+return Inertia.Render("Users/Index", new
+{
+    Users = Inertia.Prop<UsersProp>()
+});
+```
+
+`Inertia.Prop<T>()` resolves `T` from `HttpContext.RequestServices` for each request and uses the
+property name (`Users`) as the prop key. The `IInertiaProp<T>` interface backs every resolved prop,
+so you can also accept it as a parameter or return it from your own helpers.
+
+The lazy, deferred and once modifiers accept a resolved prop too, so DI stays available on those
+paths:
+
+```csharp
+return Inertia.Render("Users/Index", new
+{
+    Users = Inertia.Lazy<UsersProp>(),
+    Stats = Inertia.Defer<StatsProp>("stats"),
+    Permissions = Inertia.Once<PermissionsProp>()
+});
+```
+
+Props resolve sequentially by default, so a request-scoped service shared by several props behaves
+deterministically. To resolve independent props concurrently, opt in to parallel resolution:
+
+```csharp
+builder.Services.AddInertia(options =>
+{
+    options.PropResolution = PropResolution.Parallel;
+});
+```
+
+All prop resolution (including `Func<object?>`, `Func<Task<object?>>`, and DI-resolved props)
+observes `HttpContext.RequestAborted`, so client disconnects cancel in-flight work.
+
 ## Partial reloads
 
 A partial reload lets the client request a subset of props without re-rendering the page. Send the

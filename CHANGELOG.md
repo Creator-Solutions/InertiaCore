@@ -1,5 +1,39 @@
 # Changelog
 
+### DI-resolved props (IN-67)
+
+Resolve props from the request's service container instead of computing them inline, so a prop
+class can take constructor-injected dependencies. All prop resolution now observes
+`HttpContext.RequestAborted`, and prop evaluation is sequential by default with opt-in parallelism.
+
+#### Added
+
+- **`IInertiaProp<T>`** (`InertiaCore.Props`) — public covariant interface implemented by
+  DI-resolved props. Inject it or return it from your own helpers.
+- **`Inertia.Prop<T>()`** (`IInertia`, `IResponseFactory`) — resolves `T` from
+  `HttpContext.RequestServices` per request, using the property name as the prop key.
+- **`Inertia.Lazy<T>()`**, **`Inertia.Defer<T>(group)`**, **`Inertia.Once<T>()`** — the lazy,
+  deferred and once modifiers accept a resolved prop so DI stays available on those paths.
+- **`InertiaOptions.PropResolution`** (`InertiaCore.Models`) with `Sequential` (default) and
+  `Parallel`. Sequential keeps request-scoped services deterministic when several props share them;
+  `Parallel` resolves independent props concurrently.
+
+#### Changed
+
+- `InvokableProp` (and its lazy, deferred and once derivations) now resolve with the current
+  `HttpContext` and a `CancellationToken`, so `Func<object?>`, `Func<Task<object?>>` and every prop
+  wrapper observe `HttpContext.RequestAborted`. This aligns all async props with the intent of
+  IN-67.
+
+#### Notes
+
+- Nested invokable props inside a DI-resolved prop keep working: a resolved value that is a
+  `Dictionary<string, object?>` is walked by the same pipeline.
+- No breaking change to the existing public API. The new facade members are additive, and
+  `PropResolution` defaults to the previous sequential resolution behaviour.
+
+---
+
 ### Shared data providers (IN-66)
 
 Share props from services per request, without touching controllers. Providers merge

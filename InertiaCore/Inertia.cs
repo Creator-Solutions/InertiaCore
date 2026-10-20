@@ -318,4 +318,35 @@ public static class Inertia
     /// </summary>
     public static ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data") =>
         GetFactory().Scroll(items, metadata, wrapper);
+
+    /// <summary>
+    /// Creates a prop whose value is resolved from the current request's services, so the
+    /// data for a page can come from an application service instead of a route-handler
+    /// lambda. The instance is resolved from <c>HttpContext.RequestServices</c> for every
+    /// request and may depend on scoped services.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    public static IInertiaProp<T> Prop<T>() where T : class => GetFactory().Prop<T>();
+
+    /// <summary>
+    /// Creates a service prop that is excluded from the initial page load and only resolved
+    /// on subsequent partial reloads.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    public static LazyProp Lazy<T>() where T : class => GetFactory().Lazy<T>();
+
+    /// <summary>
+    /// Creates a service prop that is excluded from the initial full page load and resolved
+    /// only when requested. Deferred props are announced through <c>deferredProps</c>.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    /// <param name="group">The defer group. Defaults to <c>"default"</c>.</param>
+    public static DeferredProp Defer<T>(string group = "default") where T : class => GetFactory().Defer<T>(group);
+
+    /// <summary>
+    /// Creates a service prop that is resolved a single time and remembered by the client
+    /// across subsequent navigations.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    public static OnceProp Once<T>() where T : class => GetFactory().Once<T>();
 }

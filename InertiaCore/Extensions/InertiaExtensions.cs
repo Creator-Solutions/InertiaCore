@@ -85,21 +85,44 @@ internal static class InertiaExtensions
         return true;
     }
 
-    internal static async Task<object?> ResolveAsync(this Func<object?> func)
+    internal static async Task<object?> ResolveAsync(this Func<object?> func, HttpContext context, CancellationToken cancellationToken)
     {
         var result = func();
 
         if (result is Task task)
         {
-            return await task.UnwrapResultAsync();
+            return await task.UnwrapResultAsync().WaitAsync(cancellationToken);
         }
 
         return result;
     }
 
-    internal static Task<object?> ResolveResult(this Task task)
+    internal static Task<object?> ResolveResult(this Task task, CancellationToken cancellationToken)
     {
-        return task.UnwrapResultAsync();
+        return task.UnwrapResultAsync().WaitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Resolves an arbitrary prop value through the shared resolution pipeline: a
+    /// service instance may itself be a factory, an awaitable, or another invokable
+    /// prop. Used by DI-resolved props (<see cref="InertiaCore.Props.IInertiaProp{T}"/>)
+    /// so their value keeps working with nested invokable logic.
+    /// </summary>
+    internal static async Task<object?> ResolveValueAsync(this object? value, HttpContext context, CancellationToken cancellationToken)
+    {
+        switch (value)
+        {
+            case InertiaCore.Props.IInertiaProp<object> prop:
+                return await prop.ResolveAsync(context, cancellationToken);
+            case Func<object?> f:
+                return await f.ResolveAsync(context, cancellationToken);
+            case Task t:
+                return await t.ResolveResult(cancellationToken);
+            case InertiaCore.Props.InvokableProp p:
+                return await p.Invoke(context, cancellationToken);
+            default:
+                return value;
+        }
     }
 
     internal static string MD5(this string s)

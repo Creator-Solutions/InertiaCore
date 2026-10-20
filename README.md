@@ -57,7 +57,7 @@ wire up the frontend.
   lazy props, shared props, redirects and error bags.
 - **MVC & Minimal APIs**: the same Inertia responses work in controllers and endpoint handlers.
 - **Rich props**: lazy and async props, deferred, once, merge and infinite-scroll props, with
-  per-prop rescue.
+  per-prop rescue and DI-resolved props that share `HttpContext.RequestAborted`.
 - **Server-side rendering**: built-in SSR gateway support.
 - **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP
   nonces and integrity hashes.

@@ -161,6 +161,18 @@ public sealed class InertiaService : IInertia
         _factory.Scroll(items, metadata, wrapper);
 
     /// <inheritdoc />
+    public IInertiaProp<T> Prop<T>() where T : class => _factory.Prop<T>();
+
+    /// <inheritdoc />
+    public LazyProp Lazy<T>() where T : class => _factory.Lazy<T>();
+
+    /// <inheritdoc />
+    public DeferredProp Defer<T>(string group = "default") where T : class => _factory.Defer<T>(group);
+
+    /// <inheritdoc />
+    public OnceProp Once<T>() where T : class => _factory.Once<T>();
+
+    /// <inheritdoc />
     public void EncryptHistory(bool encrypt = true) => _factory.EncryptHistory(encrypt);
 
     /// <inheritdoc />

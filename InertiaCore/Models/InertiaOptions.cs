@@ -58,4 +58,13 @@ public class InertiaOptions
     /// derived from the current <c>ClaimsPrincipal</c>.
     /// </summary>
     public InertiaClaimsSharedDataOptions ClaimsSharedData { get; set; } = new();
+
+    /// <summary>
+    /// How the top-level props of a page are resolved. Defaults to
+    /// <see cref="PropResolution.Sequential"/> because props (especially DI-resolved
+    /// props) may depend on a scoped service that is not thread-safe. Set
+    /// <see cref="PropResolution.Parallel"/> to resolve independent props concurrently
+    /// when every prop is safe to run in parallel.
+    /// </summary>
+    public PropResolution PropResolution { get; set; } = PropResolution.Sequential;
 }

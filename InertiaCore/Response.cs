@@ -620,7 +620,12 @@ public class Response : IActionResult, IResult
     private async Task<(Dictionary<string, object?> Props, List<string> Rescued)> ResolvePropertyInstances(
         Dictionary<string, object?> props)
     {
-        var results = await Task.WhenAll(props.Select(async pair =>
+        var httpContext = _context!.HttpContext;
+        var cancellationToken = httpContext.RequestAborted;
+        var parallel = GetPropResolution() == PropResolution.Parallel;
+
+        async Task<(string Key, object? Value, List<string> Rescued, bool Failed)> ResolvePair(
+            KeyValuePair<string, object?> pair)
         {
             var key = pair.Key.ToCamelCase();
 
@@ -628,9 +633,10 @@ public class Response : IActionResult, IResult
             {
                 object? value = pair.Value switch
                 {
-                    Func<object?> f => await f.ResolveAsync(),
-                    Task t => await t.ResolveResult(),
-                    InvokableProp p => await p.Invoke(),
+                    IInertiaProp<object> prop => await prop.ResolveAsync(httpContext, cancellationToken),
+                    Func<object?> f => await f.ResolveAsync(httpContext, cancellationToken),
+                    Task t => await t.ResolveResult(cancellationToken),
+                    InvokableProp p => await p.Invoke(httpContext, cancellationToken),
                     _ => pair.Value
                 };
 
@@ -647,7 +653,21 @@ public class Response : IActionResult, IResult
                 LogRescuedProp(key, ex);
                 return (Key: key, Value: (object?)null, Rescued: new List<string>(), Failed: true);
             }
-        }));
+        }
+
+        (string Key, object? Value, List<string> Rescued, bool Failed)[] results;
+
+        if (parallel)
+        {
+            results = await Task.WhenAll(props.Select(ResolvePair));
+        }
+        else
+        {
+            var sequential = new List<(string Key, object? Value, List<string> Rescued, bool Failed)>(props.Count);
+            foreach (var pair in props)
+                sequential.Add(await ResolvePair(pair));
+            results = sequential.ToArray();
+        }
 
         var rescuedKeys = new List<string>();
         var resolved = new Dictionary<string, object?>();
@@ -665,6 +685,19 @@ public class Response : IActionResult, IResult
         }
 
         return (resolved, rescuedKeys);
+    }
+
+    /// <summary>
+    /// Reads the configured prop resolution strategy, defaulting to sequential when no
+    /// options are available (for example in a minimal unit-test host).
+    /// </summary>
+    private PropResolution GetPropResolution()
+    {
+        var options = _context?.HttpContext?.RequestServices?
+            .GetService(typeof(Microsoft.Extensions.Options.IOptions<InertiaOptions>))
+            as Microsoft.Extensions.Options.IOptions<InertiaOptions>;
+
+        return options?.Value.PropResolution ?? PropResolution.Sequential;
     }
 
     /// <summary>
