@@ -68,6 +68,8 @@ wire up the frontend.
   sign-in/sign-out.
 - **Error pages**: opt-in Inertia error component for `401`/`403`/`404`/`419`/`500`/`503`, with
   cookie-auth login redirects converted to `409 + X-Inertia-Location` for Inertia requests.
+- **Shared data providers**: contribute shared props from services per request with
+  `AddInertiaSharedData<TProvider>()`, with an opt-in claims provider that shares `auth.user`.
 - **Typed end to end**: generate TypeScript declarations for your page props and typed route
   helpers from your C# contracts with `InertiaCore.TypeGen`.
 

@@ -42,6 +42,12 @@ public class Response : IActionResult, IResult
     private readonly Dictionary<string, OncePropEntry> _onceProps = new();
     private readonly List<string> _rescuedProps = new();
 
+    /// <summary>
+    /// Top-level keys contributed by shared-data providers for the current request, captured
+    /// during <see cref="ResolveSharedProps"/> so <see cref="CollectSharedProps"/> reports them.
+    /// </summary>
+    private readonly List<string> _providerSharedKeys = new();
+
     internal Response(
         string component,
         Dictionary<string, object?> props,
@@ -169,7 +175,7 @@ public class Response : IActionResult, IResult
         _onceProps.Clear();
         _rescuedProps.Clear();
 
-        props = ResolveSharedProps(props);
+        props = await ResolveSharedProps(props);
         props = ApplyPartialFilter(props);
         props = ApplyFlashProps(props);
         props = ResolveAlways(props);
@@ -188,18 +194,31 @@ public class Response : IActionResult, IResult
     }
 
     /// <summary>
-    /// Resolve `shared` props stored in InertiaState (migrated from HttpContext.Features).
+    /// Merges shared props into the response props in a deterministic order:
+    /// global (<c>Inertia.Share</c> outside a request) → shared-data providers (in
+    /// registration order) → request-scoped (<c>IInertia.Share</c>) → component props.
+    /// Later sources override earlier ones, so component props always win.
     /// </summary>
-    private Dictionary<string, object?> ResolveSharedProps(Dictionary<string, object?> props)
+    private async Task<Dictionary<string, object?>> ResolveSharedProps(Dictionary<string, object?> props)
     {
         var globalShared = Inertia.GetSharedData();
         var requestShared = _state.SharedProps;
+        var providerShared = await ResolveProviderSharedProps();
 
-        if (globalShared.Count == 0 && requestShared.Count == 0)
+        _providerSharedKeys.Clear();
+        foreach (var key in providerShared.Keys)
+            _providerSharedKeys.Add(key);
+
+        if (globalShared.Count == 0 && providerShared.Count == 0 && requestShared.Count == 0)
             return props;
 
-        var result = new Dictionary<string, object?>(props.Count + globalShared.Count + requestShared.Count);
+        var result = new Dictionary<string, object?>(
+            props.Count + globalShared.Count + providerShared.Count + requestShared.Count);
+
         foreach (var (key, value) in globalShared)
+            result[key] = value;
+
+        foreach (var (key, value) in providerShared)
             result[key] = value;
 
         foreach (var (key, value) in requestShared)
@@ -207,6 +226,47 @@ public class Response : IActionResult, IResult
 
         foreach (var (key, value) in props)
             result[key] = value;
+
+        return result;
+    }
+
+    /// <summary>
+    /// Resolves every registered <see cref="IInertiaSharedDataProvider"/> for the current
+    /// request, in registration order, and merges their props (a later provider overrides an
+    /// earlier one). A provider failure throws an <see cref="InvalidOperationException"/>
+    /// that names the provider type.
+    /// </summary>
+    private async Task<Dictionary<string, object?>> ResolveProviderSharedProps()
+    {
+        var services = _context?.HttpContext?.RequestServices;
+        if (services is null)
+            return new Dictionary<string, object?>();
+
+        var providers = services.GetServices<IInertiaSharedDataProvider>();
+        var result = new Dictionary<string, object?>();
+
+        foreach (var provider in providers)
+        {
+            IReadOnlyDictionary<string, object?>? contributed;
+
+            try
+            {
+                contributed = await provider.GetSharedDataAsync(
+                    _context!.HttpContext,
+                    _context.HttpContext.RequestAborted);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Shared data provider '{provider.GetType().FullName}' failed: {ex.Message}", ex);
+            }
+
+            if (contributed is null)
+                continue;
+
+            foreach (var (key, value) in contributed)
+                result[key.ToCamelCase()] = value;
+        }
 
         return result;
     }
@@ -284,18 +344,25 @@ public class Response : IActionResult, IResult
         new Dictionary<string, object?>();
 
     /// <summary>
-    /// The top-level keys registered via <c>Inertia.Share</c> (global + request),
-    /// used by the client to carry shared props during instant visits.
+    /// The top-level keys registered via <c>Inertia.Share</c> (global + request) and
+    /// contributed by shared-data providers, used by the client to carry shared props
+    /// during instant visits.
     /// </summary>
     private List<string>? CollectSharedProps()
     {
         var globalShared = Inertia.GetSharedData();
         var requestShared = _state.SharedProps;
 
-        if (globalShared.Count == 0 && requestShared.Count == 0)
+        if (globalShared.Count == 0 && requestShared.Count == 0 && _providerSharedKeys.Count == 0)
             return null;
 
         var keys = new List<string>(globalShared.Keys);
+        foreach (var key in _providerSharedKeys)
+        {
+            if (!keys.Contains(key))
+                keys.Add(key);
+        }
+
         foreach (var key in requestShared.Keys)
         {
             if (!keys.Contains(key))
