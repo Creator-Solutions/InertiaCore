@@ -46,7 +46,7 @@ public static class Configure
         }
 
         // Version-mismatch short-circuit (runs before the response-shaping middleware).
-        app.Use(async (context, next) =>
+        app.Use(async (HttpContext context, Func<Task> next) =>
         {
             var resolver = context.RequestServices.GetRequiredService<IInertiaVersionResolver>();
             var serverVersion = resolver.GetVersion();
