@@ -1,0 +1,27 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsAspireHost>true</IsAspireHost>
+        <!--
+            The sample builds without the Aspire CLI bundle so it works with the SDK alone.
+            NU1902 is the transitive MessagePack advisory from Aspire.Hosting.JavaScript.
+        -->
+        <NoWarn>$(NoWarn);NU1902;ASPIRE010</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The Aspire hosting integration under development. -->
+        <ProjectReference Include="..\..\..\InertiaCore.Aspire.Hosting\InertiaCore.Aspire.Hosting.csproj" IsAspireProjectResource="false" />
+        <!-- The Inertia web application, orchestrated as a project resource. -->
+        <ProjectReference Include="..\InertiaCore.Sample.Web\InertiaCore.Sample.Web.csproj" />
+    </ItemGroup>
+
+</Project>

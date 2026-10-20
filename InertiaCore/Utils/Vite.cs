@@ -508,6 +508,11 @@ internal class ViteBuilder : IViteBuilder
 
     private string HotAsset(string path)
     {
+        if (!string.IsNullOrEmpty(Options.HotUrl))
+        {
+            return Options.HotUrl.TrimEnd('/') + "/" + path;
+        }
+
         var hotFilePath = GetPublicPathForFile(Options.HotFile);
         var hotContents = _fileSystem.File.ReadAllText(hotFilePath);
 
@@ -528,7 +533,9 @@ internal class ViteBuilder : IViteBuilder
         return "/" + string.Join("/", pieces);
     }
 
-    public bool IsRunningHot() => _fileSystem.File.Exists(GetPublicPathForFile(Options.HotFile));
+    public bool IsRunningHot() =>
+        !string.IsNullOrEmpty(Options.HotUrl)
+        || _fileSystem.File.Exists(GetPublicPathForFile(Options.HotFile));
 
     private Dictionary<string, ViteChunk> ReadManifest()
     {

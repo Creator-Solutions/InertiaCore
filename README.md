@@ -62,6 +62,8 @@ wire up the frontend.
   process (start, health check, crash restart and graceful shutdown).
 - **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP
   nonces and integrity hashes.
+- **.NET Aspire**: the `InertiaCore.Aspire.Hosting` package runs the Vite dev server and Node SSR
+  process as Aspire resources with endpoints, health checks and dashboard logs.
 - **Validation & Precognition**: automatic `ModelState` error handling, `WithInertiaValidation()`
   for Minimal API endpoints (303 back with errors for Inertia requests), and form precognition.
 - **Anti-forgery bridge**: opt-in `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header wiring that works with

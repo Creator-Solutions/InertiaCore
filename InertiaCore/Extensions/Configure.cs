@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -212,6 +213,34 @@ public static class Configure
         if (options != null) services.Configure(options);
 
         return services;
+    }
+
+    /// <summary>
+    /// Registers Inertia and binds <see cref="InertiaOptions"/> from the <c>Inertia</c>
+    /// configuration section before applying <paramref name="options"/>. This lets an
+    /// orchestrator (for example .NET Aspire) supply values such as <c>SsrUrl</c> through
+    /// environment variables named <c>Inertia__SsrUrl</c>.
+    /// </summary>
+    public static IServiceCollection AddInertia(this IServiceCollection services,
+        IConfiguration configuration, Action<InertiaOptions>? options = null,
+        string sectionName = "Inertia")
+    {
+        services.Configure<InertiaOptions>(configuration.GetSection(sectionName));
+        return services.AddInertia(options);
+    }
+
+    /// <summary>
+    /// Registers the Vite helper and binds <see cref="ViteOptions"/> from the <c>Vite</c>
+    /// configuration section before applying <paramref name="options"/>. This lets an
+    /// orchestrator (for example .NET Aspire) supply the dev server URL through an
+    /// environment variable named <c>Vite__HotUrl</c>.
+    /// </summary>
+    public static IServiceCollection AddViteHelper(this IServiceCollection services,
+        IConfiguration configuration, Action<ViteOptions>? options = null,
+        string sectionName = "Vite")
+    {
+        services.Configure<ViteOptions>(configuration.GetSection(sectionName));
+        return services.AddViteHelper(options);
     }
 
     private static async Task OnVersionChange(HttpContext context, string serverVersion)

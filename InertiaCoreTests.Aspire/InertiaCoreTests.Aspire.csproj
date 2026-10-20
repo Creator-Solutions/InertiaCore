@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!--
+            Aspire 13.x depends on the 10.0.x Microsoft.Extensions.* packages, which cannot
+            be resolved against the pinned TestHost/Extensions versions in the multi-targeted
+            InertiaCoreTests project on net8.0/net9.0. The Aspire integration tests therefore
+            live in their own net10.0-only project.
+        -->
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <IsPackable>false</IsPackable>
+        <!-- See InertiaCore.Aspire.Hosting: transitive MessagePack advisory from Aspire. -->
+        <NoWarn>$(NoWarn);NU1902</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0"/>
+        <PackageReference Include="NUnit" Version="3.13.3"/>
+        <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
+        <PackageReference Include="coverlet.collector" Version="10.0.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\InertiaCore.Aspire.Hosting\InertiaCore.Aspire.Hosting.csproj"/>
+    </ItemGroup>
+
+</Project>

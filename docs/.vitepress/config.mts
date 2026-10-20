@@ -66,6 +66,7 @@ export default defineConfig({
           { text: 'Precognition', link: '/guide/precognition' },
           { text: 'Server-side rendering', link: '/guide/ssr' },
           { text: 'Vite integration', link: '/guide/vite' },
+          { text: '.NET Aspire', link: '/guide/aspire' },
           { text: 'Advanced', link: '/guide/advanced' }
         ]
       },

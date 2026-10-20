@@ -1,0 +1,24 @@
+{
+  "name": "inertia-aspire-sample-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Vite frontend for the InertiaCore .NET Aspire sample.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "ssr": "node ssr.mjs"
+  },
+  "dependencies": {
+    "@inertiajs/react": "^3.9.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.0.0"
+  }
+}
