@@ -16,7 +16,8 @@ builder.Services.AddInertia(options =>
 | `RootView` | `string` | `"~/Views/App.cshtml"` | Path to the root HTML view. |
 | `SsrEnabled` | `bool` | `false` | Enable server-side rendering via the gateway. |
 | `SsrUrl` | `string` | `"http://127.0.0.1:13714/render"` | SSR gateway endpoint. |
-| `SsrTimeout` | `TimeSpan` | `5s` | Timeout for a single SSR render request; on timeout the response falls back to client-side rendering. |
+| `SsrHealthUrl` | `string?` | `null` | Health endpoint probed by the SSR health check; defaults to the origin of `SsrUrl` with `/health` appended. |
+| `SsrTimeout` | `TimeSpan` | `5s` | Total budget for a single SSR render dispatch (covering attempts, retries and breaker interaction); on exhaustion the response falls back to client-side rendering. |
 | `SsrMaxResponseBytes` | `long` | `10 MiB` | Maximum SSR response body size that will be read and parsed; larger responses fall back to client-side rendering. |
 | `EncryptHistory` | `bool` | `false` | Emit `encryptHistory: true` in the page object. |
 | `Version` | `string?` | `""` | The current asset version. An empty string tells the client this server does not track asset versions. |
@@ -83,6 +84,23 @@ The `Ssr` object configures the managed Node SSR process. See
 | `WorkingDirectory` | `string?` | `null` | Working directory for the process; defaults to the app base directory. |
 | `EnvironmentVariables` | `IDictionary<string, string>` | `{}` | Extra environment variables for the process. |
 | `ShutdownTimeout` | `TimeSpan` | `5s` | Time to wait for a graceful `/shutdown` before killing the process tree. |
+
+### `InertiaOptions.SsrResilience`
+
+The `SsrResilience` object tunes the standard resilience pipeline on the SSR client (total
+timeout, retry with exponential backoff and jitter, circuit breaker, attempt timeout). See
+[Server-side rendering](/guide/ssr#resilience) for usage. The total budget is
+`InertiaOptions.SsrTimeout`; the values below configure the individual strategies.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `MaxRetryAttempts` | `int` | `2` | Retry attempts for transient failures within the `SsrTimeout` budget. Must be between 1 and 10; retries cannot be disabled. |
+| `RetryBaseDelay` | `TimeSpan` | `200ms` | Base delay between retries; grows exponentially per attempt with added jitter. |
+| `AttemptTimeout` | `TimeSpan?` | `null` | Timeout for a single attempt; defaults to `SsrTimeout`. |
+| `CircuitBreakerFailureRatio` | `double` | `0.5` | Proportion of failing outcomes within the sampling window that opens the circuit. Must be > 0 and ≤ 1. |
+| `CircuitBreakerMinimumThroughput` | `int` | `10` | Minimum outcomes in the sampling window before the ratio can open the circuit. |
+| `CircuitBreakerSamplingDuration` | `TimeSpan` | `30s` | Window over which failures are counted. |
+| `CircuitBreakerBreakDuration` | `TimeSpan` | `30s` | How long the circuit stays open before a trial call is allowed through. Must be at least 500 ms. |
 
 ## `AddViteHelper`
 

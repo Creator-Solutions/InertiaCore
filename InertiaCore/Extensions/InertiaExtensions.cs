@@ -26,7 +26,7 @@ internal static class InertiaExtensions
     /// The request path and query exactly as they were received (still percent-encoded),
     /// with any CR/LF stripped as a defence against header injection. Use this for
     /// values written to response headers such as <c>X-Inertia-Location</c>; use
-    /// <see cref="RequestedUri"/> only where a decoded URL is required.
+    /// <see cref="RequestedUri(Microsoft.AspNetCore.Http.HttpContext)"/> only where a decoded URL is required.
     /// </summary>
     internal static string RequestedLocation(this HttpContext context) =>
         context.Request.GetEncodedPathAndQuery()

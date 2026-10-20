@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 
 namespace InertiaCore.Extensions;
@@ -170,8 +171,59 @@ public static class Configure
         // is registered here and contributes nothing unless ClaimsSharedData.Enabled is set.
         services.AddScoped<IInertiaSharedDataProvider, ClaimsSharedDataProvider>();
 
-        // Gateway is safe as Singleton since IHttpClientFactory manages HttpClient lifetimes.
-        services.AddSingleton<IGateway, Gateway>();
+        // SSR typed client (IN-69): the standard resilience handler (total timeout, retry
+        // with exponential backoff and jitter, circuit breaker and attempt timeout) wraps
+        // every render call. The total budget is InertiaOptions.SsrTimeout; the remaining
+        // values come from InertiaOptions.SsrResilience. The handler is registered
+        // unconditionally but is only exercised when SSR is enabled (the gateway is the
+        // only consumer), so applications that do not use SSR are unaffected. AddInertia
+        // may be invoked more than once to layer options, but a second
+        // AddStandardResilienceHandler would nest a second full resilience pipeline on the
+        // same client (two breakers with independent timers), hence the marker guard.
+        if (services.All(d => d.ServiceType != typeof(SsrHttpClientMarker)))
+        {
+            services.AddSingleton<SsrHttpClientMarker>();
+
+            var ssrPipeline = services
+                .AddHttpClient<InertiaSsrClient>(InertiaSsrClient.HttpClientName)
+                .AddStandardResilienceHandler();
+
+            services.AddOptions<HttpStandardResilienceOptions>(ssrPipeline.PipelineName)
+                .Configure<IOptions<InertiaOptions>>((resilience, inertia) =>
+                {
+                    var ssr = inertia.Value;
+                    var resilienceOptions = ssr.SsrResilience;
+
+                    resilience.TotalRequestTimeout.Timeout = ssr.SsrTimeout;
+                    resilience.AttemptTimeout.Timeout = resilienceOptions.AttemptTimeout ?? ssr.SsrTimeout;
+
+                    resilience.Retry.MaxRetryAttempts = resilienceOptions.MaxRetryAttempts;
+                    resilience.Retry.Delay = resilienceOptions.RetryBaseDelay;
+
+                    resilience.CircuitBreaker.FailureRatio = resilienceOptions.CircuitBreakerFailureRatio;
+                    resilience.CircuitBreaker.MinimumThroughput = resilienceOptions.CircuitBreakerMinimumThroughput;
+                    resilience.CircuitBreaker.SamplingDuration = resilienceOptions.CircuitBreakerSamplingDuration;
+                    resilience.CircuitBreaker.BreakDuration = resilienceOptions.CircuitBreakerBreakDuration;
+                });
+        }
+
+        // Gateway is scoped so it can depend on the transient typed SSR client; HttpClient
+        // lifetimes are managed by IHttpClientFactory.
+        services.TryAddScoped<IGateway, Gateway>();
+
+        // SSR health check (IN-69). Always registered (a no-op unless the application maps
+        // health endpoints) and evaluated against the runtime options: reports Healthy when
+        // SSR is disabled or the server answers, Degraded when the circuit breaker is open
+        // (fail-fast, no probe) and Unhealthy when the SSR server cannot be reached.
+        // AddInertia may be invoked more than once to layer options, but health-check
+        // registrations are not idempotent (duplicate names throw), hence the marker guard.
+        if (services.All(d => d.ServiceType != typeof(SsrHealthCheckMarker)))
+        {
+            services.AddSingleton<SsrHealthCheckMarker>();
+            services.AddHealthChecks().AddCheck<InertiaSsrHealthCheck>(
+                "inertia-ssr",
+                tags: new[] { "ssr" });
+        }
 
         // Managed SSR process (IN-68). Options validate on start. The launcher and the hosted
         // service are always registered but the service is a no-op unless
@@ -269,5 +321,13 @@ public static class Configure
         context.Response.StatusCode = (int)HttpStatusCode.Conflict;
 
         await context.Response.CompleteAsync();
+    }
+
+    private sealed class SsrHealthCheckMarker
+    {
+    }
+
+    private sealed class SsrHttpClientMarker
+    {
     }
 }

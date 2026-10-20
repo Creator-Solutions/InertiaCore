@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -6,6 +6,9 @@ using InertiaCore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly.CircuitBreaker;
+using Polly.RateLimiting;
+using Polly.Timeout;
 
 namespace InertiaCore.Ssr;
 
@@ -16,28 +19,18 @@ internal interface IGateway
 
 internal class Gateway : IGateway
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly InertiaSsrClient _client;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly InertiaOptions _inertiaOptions;
     private readonly ILogger<Gateway>? _logger;
 
-    public Gateway(IHttpClientFactory httpClientFactory)
-        : this(httpClientFactory, null)
-    {
-    }
-
-    public Gateway(IHttpClientFactory httpClientFactory, IOptions<JsonOptions>? jsonOptions)
-        : this(httpClientFactory, jsonOptions, null, null)
-    {
-    }
-
     public Gateway(
-        IHttpClientFactory httpClientFactory,
+        InertiaSsrClient client,
         IOptions<JsonOptions>? jsonOptions,
         IOptions<InertiaOptions>? inertiaOptions,
         ILogger<Gateway>? logger)
     {
-        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        _client = client ?? throw new ArgumentNullException(nameof(client));
         _inertiaOptions = inertiaOptions?.Value ?? new InertiaOptions();
         _logger = logger;
 
@@ -65,9 +58,8 @@ internal class Gateway : IGateway
 
         try
         {
-            var client = _httpClientFactory.CreateClient();
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            using var response = await client.PostAsync(uri, content, timeout.Token).ConfigureAwait(false);
+            using var response = await _client.HttpClient.PostAsync(uri, content, timeout.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -100,6 +92,28 @@ internal class Gateway : IGateway
             }
 
             return parsed;
+        }
+        catch (BrokenCircuitException)
+        {
+            _logger?.LogWarning(
+                "Inertia SSR circuit breaker for {Url} is open; skipping the request and rendering client-side.",
+                uri);
+            return null;
+        }
+        catch (TimeoutRejectedException)
+        {
+            _logger?.LogWarning(
+                "Inertia SSR request to {Url} timed out after {Timeout}; falling back to client-side rendering.",
+                uri,
+                _inertiaOptions.SsrTimeout);
+            return null;
+        }
+        catch (RateLimiterRejectedException)
+        {
+            _logger?.LogWarning(
+                "Inertia SSR request to {Url} was rejected by the client rate limiter; falling back to client-side rendering.",
+                uri);
+            return null;
         }
         catch (OperationCanceledException)
         {

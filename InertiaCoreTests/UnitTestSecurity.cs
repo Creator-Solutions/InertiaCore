@@ -96,7 +96,6 @@ public class UnitTestSecurity
     private static ResponseFactory CreateFactory(InertiaOptions options)
     {
         var contextAccessor = new Mock<IHttpContextAccessor>();
-        var httpClientFactory = new Mock<IHttpClientFactory>();
 
         var inertiaOptions = new Mock<IOptions<InertiaOptions>>();
         inertiaOptions.SetupGet(x => x.Value).Returns(options);
@@ -106,7 +105,7 @@ public class UnitTestSecurity
 
         return new ResponseFactory(
             contextAccessor.Object,
-            new Gateway(httpClientFactory.Object),
+            new Gateway(new InertiaSsrClient(new HttpClient()), null, null, null),
             inertiaOptions.Object,
             new InertiaState(),
             jsonOptions.Object);

@@ -22,7 +22,7 @@ public class UnitTestSsrGateway
         configure?.Invoke(options);
 
         return new Gateway(
-            new StubHttpClientFactory(new StubHandler(handler)),
+            new InertiaSsrClient(new HttpClient(new StubHandler(handler), disposeHandler: false)),
             Options.Create(new JsonOptions()),
             Options.Create(options),
             NullLogger<Gateway>.Instance);
@@ -175,15 +175,6 @@ public class UnitTestSsrGateway
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             _handler(request, cancellationToken);
-    }
-
-    private sealed class StubHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpMessageHandler _handler;
-
-        public StubHttpClientFactory(HttpMessageHandler handler) => _handler = handler;
-
-        public HttpClient CreateClient(string name) => new(_handler, disposeHandler: false);
     }
 
     private sealed class NullGateway : IGateway

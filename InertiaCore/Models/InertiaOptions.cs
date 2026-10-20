@@ -10,6 +10,21 @@ public class InertiaOptions
     public string SsrUrl { get; set; } = "http://127.0.0.1:13714/render";
 
     /// <summary>
+    /// URL of the SSR server's health endpoint, used by <c>InertiaSsrHealthCheck</c>. When
+    /// <see langword="null"/> the URL is derived from <see cref="SsrUrl"/> by taking its
+    /// scheme, host and port and appending <c>/health</c> (for example
+    /// <c>http://127.0.0.1:13714/render</c> becomes <c>http://127.0.0.1:13714/health</c>).
+    /// </summary>
+    public string? SsrHealthUrl { get; set; }
+
+    /// <summary>
+    /// Resilience settings for the SSR render client: retry with exponential backoff and
+    /// jitter, attempt timeout and circuit breaker. The overall budget for one render
+    /// dispatch remains <see cref="SsrTimeout"/>.
+    /// </summary>
+    public InertiaSsrResilienceOptions SsrResilience { get; set; } = new();
+
+    /// <summary>
     /// Timeout applied to a single SSR render request. When the SSR server does not
     /// respond in time the response falls back to client-side rendering.
     /// </summary>

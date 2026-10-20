@@ -34,6 +34,57 @@ adapter falls back to a client-side render rather than failing the request. See
 [Security](/security) for the hardening checklist.
 :::
 
+## Resilience
+
+Every render call travels through the standard resilience pipeline
+([Microsoft.Extensions.Http.Resilience](https://learn.microsoft.com/aspnet/core/fundamentals/http-requests#add-standard-resilience-handler)):
+a total request timeout, retries with exponential backoff and jitter, a circuit breaker and a
+per-attempt timeout. The behaviour is tuned through `InertiaOptions.SsrResilience`:
+
+```csharp
+builder.Services.AddInertia(options =>
+{
+    options.SsrEnabled = true;
+    options.SsrTimeout = TimeSpan.FromSeconds(5); // total budget for one render dispatch
+    options.SsrResilience.MaxRetryAttempts = 2;
+    options.SsrResilience.RetryBaseDelay = TimeSpan.FromMilliseconds(200);
+    options.SsrResilience.CircuitBreakerMinimumThroughput = 10;
+    options.SsrResilience.CircuitBreakerFailureRatio = 0.5;
+    options.SsrResilience.CircuitBreakerBreakDuration = TimeSpan.FromSeconds(30);
+});
+```
+
+- `SsrTimeout` is the total budget for a single render dispatch; it covers every attempt, retry
+  delay and the circuit-breaker interaction. Whatever the outcome — success, timeout, retries
+  exhausted or an open circuit — the response falls back to client-side rendering.
+- When the failure ratio within the sampling window exceeds the threshold, the circuit breaker
+  opens. While it is open the adapter skips the SSR call entirely and renders client-side
+  without waiting, so a down SSR server never slows requests down. After the break duration a
+  single trial call is allowed through; a successful trial closes the circuit, a failed one
+  re-opens it.
+
+The client also degrades to client-side rendering on invalid URLs, oversized or malformed
+responses and connection errors, so enabling SSR never turns a healthy page into an error
+page just because the SSR process is down.
+
+### Health check
+
+`AddInertia` registers an `InertiaSsrHealthCheck` named `inertia-ssr` (tagged `ssr`) with the
+ASP.NET health-check system. Map it with your preferred health endpoint:
+
+```csharp
+app.MapHealthChecks("/health");
+```
+
+| State | Reported | Meaning |
+| --- | --- | --- |
+| Healthy | `200` | SSR is disabled, or the SSR server answered the probe. |
+| Degraded | `200` | The circuit breaker is open; reported fail-fast without probing the server. |
+| Unhealthy | `503` | The SSR server could not be reached or answered an error. |
+
+The probe targets `SsrHealthUrl` when set, otherwise the origin of `SsrUrl` with `/health`
+appended — the same endpoint the [managed process](#managed-process) waits for on start.
+
 ## Managed process
 
 Instead of running the SSR server yourself, you can let the adapter start and manage it. Enable
