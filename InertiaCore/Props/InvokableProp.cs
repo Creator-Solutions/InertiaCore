@@ -1,4 +1,5 @@
 using InertiaCore.Extensions;
+using Microsoft.AspNetCore.Http;
 
 namespace InertiaCore.Props;
 
@@ -22,14 +23,19 @@ public class InvokableProp : IMergeable, IOnceable
 
     protected InvokableProp(object? value) => _value = value;
 
-    internal Task<object?> Invoke()
+    internal async Task<object?> Invoke(HttpContext context, CancellationToken cancellationToken)
     {
+        // A DI-resolved prop resolves itself (this), regardless of its placeholder value.
+        if (this is IInertiaProp<object> self)
+            return await self.ResolveAsync(context, cancellationToken);
+
         return _value switch
         {
-            Func<object?> f => f.ResolveAsync(),
-            Task t => t.ResolveResult(),
-            InvokableProp p => p.Invoke(),
-            _ => Task.FromResult(_value)
+            IInertiaProp<object> prop => await prop.ResolveAsync(context, cancellationToken),
+            Func<object?> f => await f.ResolveAsync(context, cancellationToken),
+            Task t => await t.ResolveResult(cancellationToken),
+            InvokableProp p => await p.Invoke(context, cancellationToken),
+            _ => _value
         };
     }
 

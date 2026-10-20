@@ -219,6 +219,37 @@ public interface IInertia
     ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data");
 
     /// <summary>
+    /// Create a prop whose value is resolved from the current request's services
+    /// (for example an application service in a CQRS or Clean Architecture setup).
+    /// The instance is resolved from <see cref="Microsoft.AspNetCore.Http.HttpContext.RequestServices"/>
+    /// for every request, so it may depend on scoped services.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    IInertiaProp<T> Prop<T>() where T : class;
+
+    /// <summary>
+    /// Create a service prop that is excluded from the initial page load and only
+    /// resolved on subsequent partial reloads.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    LazyProp Lazy<T>() where T : class;
+
+    /// <summary>
+    /// Create a service prop that is excluded from the initial full page load and resolved
+    /// only when explicitly requested via X-Inertia-Partial-Data.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    /// <param name="group">The defer group. Defaults to <c>"default"</c>.</param>
+    DeferredProp Defer<T>(string group = "default") where T : class;
+
+    /// <summary>
+    /// Create a service prop that is resolved a single time and remembered by the client
+    /// across subsequent navigations.
+    /// </summary>
+    /// <typeparam name="T">The service type whose instance is used as the prop value.</typeparam>
+    OnceProp Once<T>() where T : class;
+
+    /// <summary>
     /// Set whether to encrypt history state on the client side.
     /// </summary>
     void EncryptHistory(bool encrypt = true);

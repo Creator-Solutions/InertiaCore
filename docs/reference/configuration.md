@@ -22,6 +22,7 @@ builder.Services.AddInertia(options =>
 | `Version` | `string?` | `""` | The current asset version. An empty string tells the client this server does not track asset versions. |
 | `VersionResolver` | `Func<IServiceProvider, string>?` | `null` | Resolve the asset version per request; takes precedence over `Version`. |
 | `ValidatePages` | `bool` | `false` | Throw when rendering a component not declared with `[InertiaPage]`. |
+| `PropResolution` | `PropResolution` | `Sequential` | Resolve props one at a time (`Sequential`) or concurrently (`Parallel`). |
 
 ### `InertiaOptions.Antiforgery`
 

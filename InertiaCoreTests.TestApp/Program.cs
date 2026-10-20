@@ -74,6 +74,19 @@ if (builder.Configuration.GetValue<bool>("UseClaimsSharedData"))
     });
 }
 
+// DI-resolved props (IN-67). The scoped counter proves per-request resolution; opt in to
+// parallel resolution for the parallel-resolution integration test.
+if (builder.Configuration.GetValue<bool>("UseResolvedProps"))
+{
+    builder.Services.AddScoped<ScopedCounter>();
+    builder.Services.AddTransient<UsersProp>();
+    builder.Services.AddTransient<NestedProp>();
+}
+if (builder.Configuration.GetValue<bool>("UseParallelPropResolution"))
+{
+    builder.Services.AddInertia(options => options.PropResolution = InertiaCore.Models.PropResolution.Parallel);
+}
+
 #if NET10_0_OR_GREATER
 // Opt-in so the default host keeps its existing behaviour. The built-in validation
 // integration tests set this flag.
@@ -298,6 +311,47 @@ app.MapGet("/shared/claims", async (HttpContext context, IInertia inertia) =>
     }
 
     return (IResult)await inertia.Render("Test/Page", new { ok = true });
+});
+
+// DI-resolved prop probes (IN-67).
+app.MapGet("/resolved/prop", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { users = inertia.Prop<UsersProp>() }));
+
+app.MapGet("/resolved/nested", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { nested = inertia.Prop<NestedProp>() }));
+
+app.MapGet("/resolved/lazy", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { users = inertia.Lazy<UsersProp>() }));
+
+app.MapGet("/resolved/deferred", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { users = inertia.Defer<UsersProp>("users") }));
+
+app.MapGet("/resolved/once", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { users = inertia.Once<UsersProp>() }));
+
+// Sequential-by-default resolution probe: two DI props sharing the scoped counter must
+// resolve one after the other (ResolvedInScope increments deterministically) when using
+// a scoped service that is not thread-safe.
+app.MapGet("/resolved/sequential", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new
+    {
+        first = inertia.Prop<UsersProp>(),
+        second = inertia.Prop<UsersProp>(),
+    }));
+
+// Cancellation probe: the prop honours the request token, so aborting the request
+// cancels the running prop task.
+app.MapGet("/resolved/cancel", async (HttpContext context, IInertia inertia) =>
+{
+    var token = context.RequestAborted;
+    return (IResult)await inertia.Render("Test/Page", new
+    {
+        slow = inertia.Lazy(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30), token);
+            return (object?)"never";
+        }),
+    });
 });
 
 app.MapGet("/typed-sample", async (IInertia inertia) =>

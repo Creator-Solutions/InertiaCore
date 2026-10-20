@@ -10,6 +10,7 @@ using InertiaCore.Utils;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace InertiaCore;
@@ -87,6 +88,18 @@ public interface IResponseFactory
 
     /// <summary>Creates an infinite-scroll prop from an asynchronous factory.</summary>
     ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data");
+
+    /// <summary>Creates a prop resolved from the request's services.</summary>
+    IInertiaProp<T> Prop<T>() where T : class;
+
+    /// <summary>Creates a lazily-resolved service prop.</summary>
+    LazyProp Lazy<T>() where T : class;
+
+    /// <summary>Creates a deferred service prop in the given group.</summary>
+    DeferredProp Defer<T>(string group = "default") where T : class;
+
+    /// <summary>Creates a once-only service prop.</summary>
+    OnceProp Once<T>() where T : class;
 }
 
 internal class ResponseFactory : IResponseFactory
@@ -293,6 +306,11 @@ internal class ResponseFactory : IResponseFactory
     public ScrollProp Scroll(object? items, ScrollMetadata metadata, string wrapper = "data") => new(items, metadata, wrapper);
     public ScrollProp Scroll(Func<object?> items, ScrollMetadata metadata, string wrapper = "data") => new(items, metadata, wrapper);
     public ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data") => new(items, metadata, wrapper);
+
+    public IInertiaProp<T> Prop<T>() where T : class => new ResolvedProp<T>();
+    public LazyProp Lazy<T>() where T : class => new(new ResolvedProp<T>());
+    public DeferredProp Defer<T>(string group = "default") where T : class => new(new ResolvedProp<T>(), group);
+    public OnceProp Once<T>() where T : class => new(new ResolvedProp<T>());
 
     /// <summary>
     /// Converts an arbitrary props object to a dictionary.

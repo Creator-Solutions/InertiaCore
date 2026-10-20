@@ -12,4 +12,11 @@ public class OnceProp : InvokableProp
     internal OnceProp(Func<object?> value) : base(value) => Once();
 
     internal OnceProp(Func<Task<object?>> value) : base(value) => Once();
+
+    /// <summary>
+    /// Creates a once prop that resolves its value from another invokable prop, used by
+    /// <c>Inertia.Once&lt;T&gt;()</c>.
+    /// </summary>
+    /// <param name="value">The invokable prop that produces the value.</param>
+    internal OnceProp(InvokableProp value) : base(value) => Once();
 }

@@ -158,6 +158,10 @@ public partial class Tests
         public ScrollProp Scroll(object? items, ScrollMetadata metadata, string wrapper = "data") => throw new NotImplementedException();
         public ScrollProp Scroll(Func<object?> items, ScrollMetadata metadata, string wrapper = "data") => throw new NotImplementedException();
         public ScrollProp Scroll(Func<Task<object?>> items, ScrollMetadata metadata, string wrapper = "data") => throw new NotImplementedException();
+        public IInertiaProp<T> Prop<T>() where T : class => throw new NotImplementedException();
+        public LazyProp Lazy<T>() where T : class => throw new NotImplementedException();
+        public DeferredProp Defer<T>(string group = "default") where T : class => throw new NotImplementedException();
+        public OnceProp Once<T>() where T : class => throw new NotImplementedException();
         public void EncryptHistory(bool encrypt = true) => throw new NotImplementedException();
         public void ClearHistory(bool clear = true) => throw new NotImplementedException();
     }

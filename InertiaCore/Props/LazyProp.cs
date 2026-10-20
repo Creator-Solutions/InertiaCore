@@ -9,4 +9,8 @@ public class LazyProp : InvokableProp
     internal LazyProp(Func<Task<object?>> value) : base(value)
     {
     }
+
+    internal LazyProp(InvokableProp value) : base(value)
+    {
+    }
 }

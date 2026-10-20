@@ -37,6 +37,19 @@ public class DeferredProp : InvokableProp, IRescuable
         _rescue = rescue;
     }
 
+    /// <summary>
+    /// Creates a deferred prop that resolves its value from another invokable prop,
+    /// used by <c>Inertia.Defer&lt;T&gt;(group)</c>.
+    /// </summary>
+    /// <param name="value">The invokable prop that produces the value.</param>
+    /// <param name="group">The defer group used to fetch props in parallel.</param>
+    /// <param name="rescue">Whether resolution failures should be rescued.</param>
+    internal DeferredProp(InvokableProp value, string group = "default", bool rescue = false) : base(value)
+    {
+        Group = group;
+        _rescue = rescue;
+    }
+
     /// <summary>The defer group this prop belongs to. Defaults to <c>"default"</c>.</summary>
     internal string Group { get; }
 
