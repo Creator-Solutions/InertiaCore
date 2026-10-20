@@ -61,7 +61,7 @@ wire up the frontend.
 - **Server-side rendering**: built-in SSR gateway support, with opt-in management of the Node
   process (start, health check, crash restart and graceful shutdown).
 - **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP
-  nonces and integrity hashes.
+  nonces and integrity hashes, plus an opt-in dev-time helper that starts the dev server for you.
 - **.NET Aspire**: the `InertiaCore.Aspire.Hosting` package runs the Vite dev server and Node SSR
   process as Aspire resources with endpoints, health checks and dashboard logs.
 - **Validation & Precognition**: automatic `ModelState` error handling, `WithInertiaValidation()`

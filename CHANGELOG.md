@@ -1,5 +1,34 @@
 # Changelog
 
+### Vite dev server helper (IN-71)
+
+Start the Vite dev server as part of `dotnet run`. An opt-in, Development-only helper runs the
+configured package-manager script, waits for Vite's hot file, and stops the process on shutdown, so
+the frontend comes up with HMR without a second terminal.
+
+#### Added
+
+- **`UseViteDevServer()`** (`InertiaCore.Extensions`) on `IApplicationBuilder`. It is a no-op
+  outside the Development environment and when the dev server is already running (the hot file
+  exists and the URL it contains is reachable). Options are bound from the `Vite:DevServer`
+  configuration section, then an optional delegate is applied.
+- **`ViteDevServerOptions`** (`InertiaCore.Models`) with `PackageManager`, `WorkingDirectory`,
+  `ScriptName`, `ReadyTimeout` and `HotFile`.
+- **`VitePackageManager`** (`InertiaCore.Models`) with `Npm`, `Pnpm`, `Yarn` and `Bun`.
+
+#### Notes
+
+- On Windows the package manager runs through `cmd.exe` so the `.cmd` shims resolve; on other
+  platforms it runs directly. Shutdown kills the whole process tree, so `Ctrl+C` leaves no `node`
+  process behind.
+- The package-manager launch sits behind an internal interface so the lifecycle is unit tested
+  without a real process; an opt-in end-to-end test runs a Node fixture and asserts no orphaned
+  process remains after shutdown.
+- No breaking change to the existing public API. All additions are new members and the helper only
+  runs when `UseViteDevServer()` is called in Development.
+
+---
+
 ### .NET Aspire hosting (IN-70)
 
 Run the Vite dev server and the Node SSR process as .NET Aspire resources. A new
