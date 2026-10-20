@@ -14,6 +14,11 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>Inertia,Inertiajs,ASPNET,Vue, React</PackageTags>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <!-- Ship XML documentation with the package. CS1591 (missing XML comment for
+             publicly visible type or member) is suppressed so the new documentation
+             requirement does not introduce warnings for pre-existing public API. -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,6 +27,22 @@
 
     <ItemGroup>
         <PackageReference Include="System.IO.Abstractions" Version="19.2.16" />
+    </ItemGroup>
+
+    <!-- SSR resilience (IN-69): typed HttpClient + standard resilience handler
+         (timeout, retry with jitter, circuit breaker). Version-matched per TFM;
+         the API surface used (HttpStandardResilienceOptions, AddStandardResilienceHandler)
+         is identical across these versions. -->
+    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+        <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="8.7.0" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+        <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.10.0" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+        <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
     </ItemGroup>
 
     <ItemGroup>

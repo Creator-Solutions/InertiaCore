@@ -58,8 +58,10 @@ wire up the frontend.
 - **MVC & Minimal APIs**: the same Inertia responses work in controllers and endpoint handlers.
 - **Rich props**: lazy and async props, deferred, once, merge and infinite-scroll props, with
   per-prop rescue and DI-resolved props that share `HttpContext.RequestAborted`.
-- **Server-side rendering**: built-in SSR gateway support, with opt-in management of the Node
-  process (start, health check, crash restart and graceful shutdown).
+- **Server-side rendering**: built-in SSR gateway support with a resilient client (total timeout,
+  retries with jitter, circuit breaker and an ASP.NET health check that reports Healthy, Degraded
+  or Unhealthy), plus opt-in management of the Node process (start, health check, crash restart
+  and graceful shutdown).
 - **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP
   nonces and integrity hashes, plus an opt-in dev-time helper that starts the dev server for you.
 - **.NET Aspire**: the `InertiaCore.Aspire.Hosting` package runs the Vite dev server and Node SSR

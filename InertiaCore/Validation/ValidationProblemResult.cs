@@ -9,7 +9,7 @@ namespace InertiaCore.Validation;
 /// The <c>422 Unprocessable Entity</c> validation problem returned to non-Inertia clients.
 /// </summary>
 /// <remarks>
-/// When <paramref name="viaProblemDetailsService"/> is true and <c>IProblemDetailsService</c>
+/// When <c>viaProblemDetailsService</c> is true and <c>IProblemDetailsService</c>
 /// is registered, the problem is written through it so registered writers and customizations
 /// apply. Otherwise the body is written directly as a string. Direct writing avoids the
 /// streaming serializer, which the test host's response pipe does not support, and it is the

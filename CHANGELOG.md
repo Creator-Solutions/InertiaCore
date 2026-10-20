@@ -63,6 +63,48 @@ through environment variables.
 
 ---
 
+### SSR resilience pipeline (IN-69)
+
+Every SSR render call now travels through the standard resilience pipeline
+(`Microsoft.Extensions.Http.Resilience`): a total request timeout, retries with exponential
+backoff and jitter, a circuit breaker and a per-attempt timeout. A down or slow SSR server
+degrades to client-side rendering quickly and never fails the page, and an ASP.NET health check
+exposes the SSR state to load balancers and orchestrators.
+
+#### Added
+
+- **`InertiaOptions.SsrResilience`** (`InertiaSsrResilienceOptions`) with `MaxRetryAttempts`,
+  `RetryBaseDelay`, `AttemptTimeout`, `CircuitBreakerFailureRatio`,
+  `CircuitBreakerMinimumThroughput`, `CircuitBreakerSamplingDuration` and
+  `CircuitBreakerBreakDuration`. `SsrTimeout` remains the total budget for one render dispatch
+  and now covers every attempt, retry delay and breaker interaction.
+- **`InertiaSsrHealthCheck`** — registered by `AddInertia()` as `inertia-ssr` (tagged `ssr`).
+  Reports Healthy when SSR is disabled or the server answers, Degraded when the circuit breaker
+  is open (fail-fast, no probe) and Unhealthy when the server cannot be reached. The probe
+  targets `SsrHealthUrl` when set, otherwise the origin of `SsrUrl` with `/health` appended.
+- **`InertiaOptions.SsrHealthUrl`** — optional override for the health endpoint probed by the
+  health check.
+- **`InertiaSsrOptionsValidator`** also validates the resilience values at startup (retry range,
+  delay and timeout positivity, breaker ratio/throughput/duration floors, health URL format).
+
+#### Changed
+
+- `Gateway` dispatches through the typed `inertia-ssr` client with the resilience handler and
+  falls back to client-side rendering on `BrokenCircuitException`, `TimeoutRejectedException`,
+  `RateLimiterRejectedException`, cancellation, connection errors and malformed JSON, logging a
+  distinct warning per cause. While the circuit is open the SSR call is skipped entirely.
+- `AddInertia()` registrations are idempotent: calling it more than once to layer options no
+  longer duplicates the SSR health check or nests a second resilience pipeline on the SSR client.
+
+#### Notes
+
+- The resilience handler is registered unconditionally but is only exercised when SSR is
+  enabled; applications that do not use SSR are unaffected. The rate limiter runs at the
+  framework defaults (1000 permits/second).
+- No breaking change to the existing public API. All additions are new members.
+
+---
+
 ### Managed SSR process lifecycle (IN-68)
 
 Let the adapter run your Node SSR bundle instead of managing it yourself. An opt-in hosted service

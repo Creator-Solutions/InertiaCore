@@ -24,9 +24,8 @@ public partial class Tests
         Inertia.ClearSharedData();
 
         var contextAccessor = new Mock<IHttpContextAccessor>();
-        var httpClientFactory = new Mock<IHttpClientFactory>();
 
-        var gateway = new Gateway(httpClientFactory.Object);
+        var gateway = new Gateway(new InertiaSsrClient(new HttpClient()), null, null, null);
         var options = new Mock<IOptions<InertiaOptions>>();
         options.SetupGet(x => x.Value).Returns(new InertiaOptions());
 

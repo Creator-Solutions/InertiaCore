@@ -105,6 +105,44 @@ if (builder.Configuration.GetValue<bool>("UseManagedSsr"))
     });
 }
 
+// SSR resilience (IN-69). Opt-in; the integration tests supply the SSR URL and tight
+// resilience values through configuration so the timeout, circuit-breaker and health-check
+// behaviour can be exercised against a controllable local server.
+if (builder.Configuration.GetValue<bool>("UseSsrResilience"))
+{
+    builder.Services.AddInertia(options =>
+    {
+        options.SsrEnabled = true;
+
+        var ssrUrl = builder.Configuration["SsrResilience:SsrUrl"];
+        if (!string.IsNullOrEmpty(ssrUrl)) options.SsrUrl = ssrUrl;
+
+        var healthUrl = builder.Configuration["SsrResilience:SsrHealthUrl"];
+        if (!string.IsNullOrEmpty(healthUrl)) options.SsrHealthUrl = healthUrl;
+
+        var timeoutSeconds = builder.Configuration.GetValue<double?>("SsrResilience:TimeoutSeconds");
+        if (timeoutSeconds is > 0) options.SsrTimeout = TimeSpan.FromSeconds(timeoutSeconds.Value);
+
+        var maxRetryAttempts = builder.Configuration.GetValue<int?>("SsrResilience:MaxRetryAttempts");
+        if (maxRetryAttempts is not null) options.SsrResilience.MaxRetryAttempts = maxRetryAttempts.Value;
+
+        var retryBaseDelayMs = builder.Configuration.GetValue<double?>("SsrResilience:RetryBaseDelayMs");
+        if (retryBaseDelayMs is > 0) options.SsrResilience.RetryBaseDelay = TimeSpan.FromMilliseconds(retryBaseDelayMs.Value);
+
+        var minimumThroughput = builder.Configuration.GetValue<int?>("SsrResilience:MinimumThroughput");
+        if (minimumThroughput is not null) options.SsrResilience.CircuitBreakerMinimumThroughput = minimumThroughput.Value;
+
+        var failureRatio = builder.Configuration.GetValue<double?>("SsrResilience:FailureRatio");
+        if (failureRatio is not null) options.SsrResilience.CircuitBreakerFailureRatio = failureRatio.Value;
+
+        var samplingSeconds = builder.Configuration.GetValue<double?>("SsrResilience:SamplingDurationSeconds");
+        if (samplingSeconds is > 0) options.SsrResilience.CircuitBreakerSamplingDuration = TimeSpan.FromSeconds(samplingSeconds.Value);
+
+        var breakSeconds = builder.Configuration.GetValue<double?>("SsrResilience:BreakDurationSeconds");
+        if (breakSeconds is > 0) options.SsrResilience.CircuitBreakerBreakDuration = TimeSpan.FromSeconds(breakSeconds.Value);
+    });
+}
+
 // Development-time Vite dev server helper (IN-71). Opt-in; the integration test registers a
 // launcher (through ConfigureTestServices) that runs a Node fixture in place of the package
 // manager, so the start/ready/shutdown lifecycle is exercised without npm.
@@ -314,6 +352,14 @@ app.MapGet("/status/500", () => Results.StatusCode(StatusCodes.Status500Internal
 app.MapGet("/status/503", () => Results.StatusCode(StatusCodes.Status503ServiceUnavailable));
 app.MapGet("/status/page", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+// Health endpoint (IN-69). Opt-in so the default host keeps its existing behaviour; the
+// SSR resilience integration tests map /health and assert the Healthy/Degraded/Unhealthy
+// states reported by the Inertia SSR health check.
+if (builder.Configuration.GetValue<bool>("UseHealthChecks"))
+{
+    app.MapHealthChecks("/health");
+}
 
 // SSR inlining probe (IN-68): returns the document HTML the adapter would embed, so the
 // managed-SSR integration test can assert the response came from the SSR process.

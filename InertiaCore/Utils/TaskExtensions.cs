@@ -6,7 +6,7 @@ namespace InertiaCore.Utils;
 internal static class TaskExtensions
 {
     /// <summary>
-    /// Safely awaits a task and returns its result as <see cref="object?"/>,
+    /// Safely awaits a task and returns its result as <see cref="object"/>,
     /// or <see langword="null"/> if the task has no result.
     /// </summary>
     /// <remarks>
