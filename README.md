@@ -58,7 +58,8 @@ wire up the frontend.
 - **MVC & Minimal APIs**: the same Inertia responses work in controllers and endpoint handlers.
 - **Rich props**: lazy and async props, deferred, once, merge and infinite-scroll props, with
   per-prop rescue and DI-resolved props that share `HttpContext.RequestAborted`.
-- **Server-side rendering**: built-in SSR gateway support.
+- **Server-side rendering**: built-in SSR gateway support, with opt-in management of the Node
+  process (start, health check, crash restart and graceful shutdown).
 - **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP
   nonces and integrity hashes.
 - **Validation & Precognition**: automatic `ModelState` error handling, `WithInertiaValidation()`

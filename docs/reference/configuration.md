@@ -64,6 +64,26 @@ The `ClaimsSharedData` object configures the built-in claims shared-data provide
 | `Key` | `string` | `"auth"` | Top-level prop the user object is nested under. |
 | `ClaimMapping` | `IDictionary<string, string>` | `{}` | Maps prop names to claim types. The provider contributes nothing when empty. |
 
+### `InertiaOptions.Ssr`
+
+The `Ssr` object configures the managed Node SSR process. See
+[Server-side rendering](/guide/ssr#managed-process) for usage.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Managed` | `bool` | `false` | Launch and manage the Node SSR process from the adapter. |
+| `NodePath` | `string` | `"node"` | The Node executable; a relative name is resolved against `PATH`. |
+| `ScriptPath` | `string` | `"ssr.mjs"` | Path to the SSR entry script, resolved against `WorkingDirectory`. |
+| `Port` | `int` | `13714` | Port the SSR server listens on; also derives the health, shutdown and gateway URLs. |
+| `StartupTimeout` | `TimeSpan` | `30s` | How long to wait for `/health` before treating the start as failed. |
+| `RestartPolicy` | `RestartPolicy` | `OnFailure` | `None` or `OnFailure`. |
+| `InitialBackoff` | `TimeSpan` | `500ms` | Delay before the first restart; doubles up to `MaxBackoff`. |
+| `MaxBackoff` | `TimeSpan` | `10s` | Upper bound for the restart backoff. |
+| `MaxRestarts` | `int` | `5` | Maximum restarts before giving up; `-1` restarts indefinitely. |
+| `WorkingDirectory` | `string?` | `null` | Working directory for the process; defaults to the app base directory. |
+| `EnvironmentVariables` | `IDictionary<string, string>` | `{}` | Extra environment variables for the process. |
+| `ShutdownTimeout` | `TimeSpan` | `5s` | Time to wait for a graceful `/shutdown` before killing the process tree. |
+
 ## `AddViteHelper`
 
 `AddViteHelper` configures the Vite integration with `ViteOptions`:

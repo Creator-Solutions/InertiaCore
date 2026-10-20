@@ -1,5 +1,40 @@
 # Changelog
 
+### Managed SSR process lifecycle (IN-68)
+
+Let the adapter run your Node SSR bundle instead of managing it yourself. An opt-in hosted service
+starts the bundle, waits for its health endpoint, forwards its output to `ILogger`, restarts it on
+crash with backoff, and shuts it down gracefully on application stop.
+
+#### Added
+
+- **`InertiaOptions.Ssr`** (`InertiaSsrOptions`) with `Managed`, `NodePath`, `ScriptPath`, `Port`,
+  `StartupTimeout`, `RestartPolicy`, `InitialBackoff`, `MaxBackoff`, `MaxRestarts`,
+  `WorkingDirectory`, `EnvironmentVariables` and `ShutdownTimeout`. Derived `HealthUrl`,
+  `ShutdownUrl` and `RenderUrl` helpers expose the endpoints for a given `Port`.
+- **`InertiaSsrHostedService`** — launched by `AddInertia()` when `Ssr.Managed` is enabled. It
+  spawns the process with the configured working directory and environment (including `SSR_PORT`),
+  polls `GET /health`, streams stdout/stderr to the logger, and on stop calls `POST /shutdown`
+  before killing the whole process tree with `Process.Kill(true)`.
+- **`RestartPolicy`** (`InertiaCore.Models`) with `None` and `OnFailure`. `OnFailure` (the default)
+  restarts the process after an exponential backoff up to `MaxRestarts`; requests fall back to
+  client-side rendering while it is down.
+- **`InertiaSsrOptionsValidator`** — validates the options at startup (port range, timeouts,
+  backoff ordering, restart budget) so misconfiguration fails fast.
+
+#### Notes
+
+- Management is disabled automatically when `SsrEnabled` is `false` or when the Vite dev server is
+  running. When `Ssr.Managed` is enabled and `SsrUrl` is left at its default, the gateway URL is
+  aligned with `Port`.
+- The process-launching code sits behind an internal interface so the lifecycle is unit tested
+  without a real Node process; an opt-in end-to-end test exercises the real process and asserts no
+  orphaned Node process remains after shutdown.
+- No breaking change to the existing public API. All additions are new members and management is
+  disabled by default.
+
+---
+
 ### DI-resolved props (IN-67)
 
 Resolve props from the request's service container instead of computing them inline, so a prop
