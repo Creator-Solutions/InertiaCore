@@ -171,6 +171,27 @@ public static class Configure
         // Gateway is safe as Singleton since IHttpClientFactory manages HttpClient lifetimes.
         services.AddSingleton<IGateway, Gateway>();
 
+        // Managed SSR process (IN-68). Options validate on start. The launcher and the hosted
+        // service are always registered but the service is a no-op unless
+        // InertiaSsrOptions.Managed is enabled (and SSR is enabled, and the Vite dev server is
+        // not running), so existing applications are unaffected. The Configure delegate below
+        // runs after the caller's delegate (options delegates run in registration order) and
+        // aligns SsrEnabled/SsrUrl with the managed port when the caller left the defaults.
+        services.Configure<InertiaOptions>(inertia =>
+        {
+            if (!inertia.Ssr.Managed) return;
+
+            if (!inertia.SsrEnabled) inertia.SsrEnabled = true;
+            if (inertia.SsrUrl == new InertiaOptions().SsrUrl)
+                inertia.SsrUrl = inertia.Ssr.RenderUrl;
+        });
+
+        services.AddOptions<InertiaOptions>().ValidateOnStart();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IValidateOptions<InertiaOptions>, InertiaSsrOptionsValidator>());
+        services.TryAddSingleton<IInertiaSsrProcessLauncher, ProcessLauncher>();
+        services.AddHostedService<InertiaSsrHostedService>();
+
         services.Configure<MvcOptions>(mvcOptions =>
         {
             mvcOptions.Filters.Add<InertiaActionFilter>();

@@ -55,6 +55,7 @@
     <ItemGroup>
         <None Include="Golden\**\*.ts" CopyToOutputDirectory="PreserveNewest" />
         <None Include="Golden\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="Fixtures\**\*.mjs" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>

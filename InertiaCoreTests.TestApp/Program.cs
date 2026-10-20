@@ -87,6 +87,24 @@ if (builder.Configuration.GetValue<bool>("UseParallelPropResolution"))
     builder.Services.AddInertia(options => options.PropResolution = InertiaCore.Models.PropResolution.Parallel);
 }
 
+// Managed Node SSR process (IN-68). Opt-in; the integration test supplies NodePath/ScriptPath/
+// Port through configuration so the real lifecycle (launch/health/shutdown) can be exercised.
+if (builder.Configuration.GetValue<bool>("UseManagedSsr"))
+{
+    builder.Services.AddInertia(options =>
+    {
+        options.Ssr.Managed = true;
+        options.Ssr.NodePath = builder.Configuration["ManagedSsr:NodePath"] ?? "node";
+        options.Ssr.ScriptPath = builder.Configuration["ManagedSsr:ScriptPath"] ?? "ssr-fixture.mjs";
+        options.Ssr.Port = builder.Configuration.GetValue<int?>("ManagedSsr:Port") ?? 13714;
+        options.Ssr.StartupTimeout = TimeSpan.FromSeconds(10);
+
+        var marker = builder.Configuration["ManagedSsr:Marker"];
+        if (!string.IsNullOrEmpty(marker))
+            options.Ssr.EnvironmentVariables["SSR_MARKER"] = marker;
+    });
+}
+
 #if NET10_0_OR_GREATER
 // Opt-in so the default host keeps its existing behaviour. The built-in validation
 // integration tests set this flag.
@@ -277,6 +295,14 @@ app.MapGet("/status/500", () => Results.StatusCode(StatusCodes.Status500Internal
 app.MapGet("/status/503", () => Results.StatusCode(StatusCodes.Status503ServiceUnavailable));
 app.MapGet("/status/page", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+// SSR inlining probe (IN-68): returns the document HTML the adapter would embed, so the
+// managed-SSR integration test can assert the response came from the SSR process.
+app.MapGet("/ssr/html", async (InertiaCore.IResponseFactory factory) =>
+{
+    var html = await factory.Html(new { probe = "ssr" });
+    return Results.Content(html.ToString(), "text/html");
+});
 
 app.MapGet("/protocol/target", async (IInertia inertia) =>
     (IResult)await inertia.Render("Test/Page", new { ok = true }));

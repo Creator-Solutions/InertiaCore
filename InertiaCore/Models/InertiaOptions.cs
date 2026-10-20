@@ -67,4 +67,12 @@ public class InertiaOptions
     /// when every prop is safe to run in parallel.
     /// </summary>
     public PropResolution PropResolution { get; set; } = PropResolution.Sequential;
+
+    /// <summary>
+    /// Options for the managed Node SSR process. Enable
+    /// <see cref="InertiaSsrOptions.Managed"/> to have <c>AddInertia()</c> launch and manage
+    /// the SSR bundle. Disabled automatically when <see cref="SsrEnabled"/> is
+    /// <see langword="false"/> or when the Vite dev server is running.
+    /// </summary>
+    public InertiaSsrOptions Ssr { get; set; } = new();
 }
