@@ -52,6 +52,17 @@ The `StatusPages` object configures the opt-in Inertia error pages. See
 | `MessageFactory` | `Func<HttpContext, int, string>?` | `null` | Resolves the message for a status; takes precedence over `Messages`. |
 | `RespectDeveloperExceptionPage` | `bool` | `true` | In Development, preserve the developer exception page for `500` instead of rendering the Inertia error page. |
 
+### `InertiaOptions.ClaimsSharedData`
+
+The `ClaimsSharedData` object configures the built-in claims shared-data provider. See
+[Shared data](/guide/shared-data#built-in-claims-provider) for usage.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Enabled` | `bool` | `false` | Share `auth.user` from the current `ClaimsPrincipal` on every request. |
+| `Key` | `string` | `"auth"` | Top-level prop the user object is nested under. |
+| `ClaimMapping` | `IDictionary<string, string>` | `{}` | Maps prop names to claim types. The provider contributes nothing when empty. |
+
 ## `AddViteHelper`
 
 `AddViteHelper` configures the Vite integration with `ViteOptions`:

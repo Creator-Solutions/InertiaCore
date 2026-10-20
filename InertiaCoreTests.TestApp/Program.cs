@@ -48,6 +48,32 @@ if (builder.Configuration.GetValue<bool>("UseDistributedFlash"))
     builder.Services.AddInertiaDistributedCacheFlash();
 }
 
+// Opt-in shared-data providers for the IN-66 integration tests. Two providers contribute
+// keys (to prove registration order), one is lazy, and all depend on a scoped service.
+if (builder.Configuration.GetValue<bool>("UseSharedDataProviders"))
+{
+    builder.Services.AddScoped<TestSharedScope>();
+    builder.Services.AddInertiaSharedData<FirstSharedDataProvider>();
+    builder.Services.AddInertiaSharedData<SecondSharedDataProvider>();
+}
+
+// Opt-in failing provider for the IN-66 error-naming test.
+if (builder.Configuration.GetValue<bool>("UseFailingSharedData"))
+{
+    builder.Services.AddInertiaSharedData<FailingSharedDataProvider>();
+}
+
+// Opt-in claims provider for the IN-66 integration tests.
+if (builder.Configuration.GetValue<bool>("UseClaimsSharedData"))
+{
+    builder.Services.AddInertia(options =>
+    {
+        options.ClaimsSharedData.Enabled = true;
+        options.ClaimsSharedData.ClaimMapping["name"] = ClaimTypes.Name;
+        options.ClaimsSharedData.ClaimMapping["role"] = ClaimTypes.Role;
+    });
+}
+
 #if NET10_0_OR_GREATER
 // Opt-in so the default host keeps its existing behaviour. The built-in validation
 // integration tests set this flag.
@@ -244,6 +270,35 @@ app.MapGet("/protocol/target", async (IInertia inertia) =>
 
 app.MapGet("/typed", async (IInertia inertia) =>
     (IResult)await inertia.Render(new UsersIndexProps(new[] { "Ada", "Grace" }, 1)));
+
+// Shared-data provider probes (IN-66).
+app.MapGet("/shared/providers", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+app.MapGet("/shared/scoped", async (IInertia inertia) =>
+    (IResult)await inertia.Render("Test/Page", new { ok = true }));
+
+// Signs in a principal from request headers so the claims provider can be exercised
+// without a full cookie round trip.
+app.MapGet("/shared/claims", async (HttpContext context, IInertia inertia) =>
+{
+    var name = context.Request.Headers["X-Test-Name"].ToString();
+    var role = context.Request.Headers["X-Test-Role"].ToString();
+
+    if (!string.IsNullOrEmpty(name))
+    {
+        var identity = new ClaimsIdentity(
+            new[]
+            {
+                new Claim(ClaimTypes.Name, name),
+                new Claim(ClaimTypes.Role, string.IsNullOrEmpty(role) ? "member" : role),
+            },
+            authenticationType: "Test");
+        context.User = new ClaimsPrincipal(identity);
+    }
+
+    return (IResult)await inertia.Render("Test/Page", new { ok = true });
+});
 
 app.MapGet("/typed-sample", async (IInertia inertia) =>
 {

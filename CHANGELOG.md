@@ -1,5 +1,38 @@
 # Changelog
 
+### Shared data providers (IN-66)
+
+Share props from services per request, without touching controllers. Providers merge
+deterministically between global and request-scoped shared props, and an opt-in built-in
+provider shares the authenticated user from claims.
+
+#### Added
+
+- **`IInertiaSharedDataProvider`** (`InertiaCore.Services`) — implement with
+  `ValueTask<IReadOnlyDictionary<string, object?>> GetSharedDataAsync(HttpContext, CancellationToken)`
+  to contribute shared props per request.
+- **`AddInertiaSharedData<TProvider>()`** (`InertiaCore.Extensions`) — registers a provider as
+  scoped, so it may depend on scoped services such as `DbContext`. Register multiple providers to
+  split responsibilities; they merge in registration order.
+- **`InertiaOptions.ClaimsSharedData`** (`InertiaClaimsSharedDataOptions`) with `Enabled`, `Key`
+  (default `auth`) and `ClaimMapping`. When enabled, `AddInertia()` shares `auth.user` from the
+  current `ClaimsPrincipal`, mapping the configured claim types to prop names. The provider is a
+  no-op for an anonymous user or an empty mapping.
+
+#### Notes
+
+- Merge order is now **global → providers (registration order) → request-scoped → component
+  props**; later sources override earlier ones. Existing `Inertia.Share` behaviour is unchanged.
+- Provider keys are announced in the page's `sharedProps` metadata alongside the keys registered
+  via `Inertia.Share`.
+- A provider may return any value the pipeline understands, including a lazy prop, which is
+  deferred on the first load and resolved on a partial visit.
+- A provider failure surfaces as an `InvalidOperationException` that names the provider type.
+- No breaking change to the existing public API. All additions are new members; the claims provider
+  is disabled by default.
+
+---
+
 ### Status pages (IN-65)
 
 Opt-in Inertia error pages: a handled status code renders your error component instead of

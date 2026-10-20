@@ -51,4 +51,11 @@ public class InertiaOptions
     /// to render the error component for handled status codes.
     /// </summary>
     public InertiaStatusPagesOptions StatusPages { get; set; } = new();
+
+    /// <summary>
+    /// Options for the built-in claims shared-data provider. Enable
+    /// <see cref="InertiaClaimsSharedDataOptions.Enabled"/> to share <c>auth.user</c>
+    /// derived from the current <c>ClaimsPrincipal</c>.
+    /// </summary>
+    public InertiaClaimsSharedDataOptions ClaimsSharedData { get; set; } = new();
 }

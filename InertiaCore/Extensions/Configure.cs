@@ -163,6 +163,11 @@ public static class Configure
         // are visible to the response pipeline.
         services.AddScoped<IResponseFactory, ResponseFactory>();
 
+        // Shared data providers are resolved per request from RequestServices, in
+        // registration order (see Response.ResolveSharedProps). The built-in claims provider
+        // is registered here and contributes nothing unless ClaimsSharedData.Enabled is set.
+        services.AddScoped<IInertiaSharedDataProvider, ClaimsSharedDataProvider>();
+
         // Gateway is safe as Singleton since IHttpClientFactory manages HttpClient lifetimes.
         services.AddSingleton<IGateway, Gateway>();
 
