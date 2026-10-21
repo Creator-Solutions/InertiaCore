@@ -143,6 +143,16 @@ if (builder.Configuration.GetValue<bool>("UseSsrResilience"))
     });
 }
 
+// Pagination (IN-74). Opt-in; integration tests exercise page clamping, ordering requirements,
+// and generated pagination links against an in-memory EF Core DbContext (SQLite).
+if (builder.Configuration.GetValue<bool>("UsePagination"))
+{
+    builder.Services.AddInertiaPagination();
+    builder.Services.AddDbContext<PaginationDbContext>(options =>
+        options.UseSqlite("Data Source=:memory:", b => b.EnableRetryOnFailure().UseQuerySplitting()))
+        .AddDbContextPool<PaginationDbContext>();
+}
+
 // Development-time Vite dev server helper (IN-71). Opt-in; the integration test registers a
 // launcher (through ConfigureTestServices) that runs a Node fixture in place of the package
 // manager, so the start/ready/shutdown lifecycle is exercised without npm.
@@ -445,6 +455,43 @@ app.MapGet("/resolved/cancel", async (HttpContext context, IInertia inertia) =>
     });
 });
 
+// Pagination (IN-74). Opt-in; one endpoint paginates entities, the other projects to a DTO
+// so the mapping overload is exercised against real SQL.
+if (builder.Configuration.GetValue<bool>("UsePagination"))
+{
+    app.UseInertiaPagination();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<PaginationDbContext>();
+        db.Database.EnsureCreated();
+        if (!db.Todos.Any())
+        {
+            for (var i = 1; i <= 25; i++)
+                db.Todos.Add(new Todo { Title = $"Todo {i:D2}", Done = i % 2 == 0 });
+            db.SaveChanges();
+        }
+    }
+
+    app.MapGet("/pagination/todos", async (PaginationDbContext db, int? page, int? pageSize, CancellationToken ct) =>
+    {
+        var result = await db.Todos
+            .OrderBy(t => t.Title)
+            .ToInertiaPageAsync(page ?? 1, pageSize ?? 0, ct);
+
+        return (IResult)await Inertia.Render("Pagination/Todos", new { Todos = result });
+    });
+
+    app.MapGet("/pagination/todos-summary", async (PaginationDbContext db, int? page, CancellationToken ct) =>
+    {
+        var result = await db.Todos
+            .OrderBy(t => t.Title)
+            .ToInertiaPageAsync(db => new TodoSummary(db.Id, db.Title), page ?? 1, 0, ct);
+
+        return (IResult)await Inertia.Render("Pagination/TodosSummary", new { Todos = result });
+    });
+}
+
 app.MapGet("/typed-sample", async (IInertia inertia) =>
 {
     inertia.Share("appName", "InertiaCore TestApp");
@@ -603,3 +650,19 @@ public sealed class FluentOrderValidator : AbstractValidator<FluentOrder>
         });
     }
 }
+
+/// <summary>
+/// Projection DTO used for the pagination integration test's second endpoint.
+/// </summary>
+public sealed class TodoSummary
+{
+    public int Id { get; init; }
+    public string Title { get; init; } = "";
+
+    public TodoSummary(int id, string title)
+    {
+        Id = id;
+        Title = title;
+    }
+}
+
