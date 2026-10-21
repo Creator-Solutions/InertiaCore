@@ -3,28 +3,29 @@
 [![NuGet](https://img.shields.io/nuget/v/InertiaCore.AspNetCore?style=flat-square&color=blue)](https://www.nuget.org/packages/InertiaCore.AspNetCore)
 [![Downloads](https://img.shields.io/nuget/dt/InertiaCore.AspNetCore?style=flat-square)](https://www.nuget.org/packages/InertiaCore.AspNetCore)
 [![Build](https://img.shields.io/github/actions/workflow/status/Creator-Solutions/InertiaCore/dotnet.yml?style=flat-square)](https://github.com/Creator-Solutions/InertiaCore/actions)
+[![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
+[![Inertia.js](https://img.shields.io/badge/Inertia.js-v3-9553E9?style=flat-square)](https://inertiajs.com)
 [![License](https://img.shields.io/github/license/Creator-Solutions/InertiaCore?style=flat-square)](https://github.com/Creator-Solutions/InertiaCore/blob/main/LICENSE)
 
-A production-ready ASP.NET Core adapter for building **Inertia.js** applications with .NET.
+**Build React or Vue apps on ASP.NET Core without writing an API.**
+Your controllers return pages, Inertia carries the props to your frontend, and you keep
+server-side routing, authentication and validation exactly where they are.
 
-InertiaCore.AspNetCore provides a complete server-side integration layer for Inertia.js, enabling you
-to build monolithic applications using your preferred frontend framework while keeping the
-simplicity of server-side routing and controllers.
-
-Supports ASP.NET Core MVC and Minimal APIs, Inertia.js v3, and Vue, React and other
+InertiaCore.AspNetCore is a production-ready adapter for [Inertia.js](https://inertiajs.com) v3. It works
+with ASP.NET Core MVC and Minimal APIs on .NET 8, 9 and 10, and with React, Vue and other
 Inertia-compatible frontend frameworks.
 
-> **Documentation:** [https://creator-solutions.github.io/InertiaCore/](https://creator-solutions.github.io/InertiaCore/)
+[Documentation](https://creator-solutions.github.io/InertiaCore/) · [Getting started](https://creator-solutions.github.io/InertiaCore/getting-started) · [Changelog](https://github.com/Creator-Solutions/InertiaCore/blob/main/CHANGELOG.md) · [NuGet](https://www.nuget.org/packages/InertiaCore.AspNetCore)
 
 ## Quick start
 
-Install the package:
+**1. Install the package**
 
 ```bash
 dotnet add package InertiaCore.AspNetCore
 ```
 
-Register the services and middleware:
+**2. Register the services and middleware**
 
 ```csharp
 using InertiaCore.Extensions;
@@ -36,9 +37,10 @@ var app = builder.Build();
 app.UseInertia();
 ```
 
-Render a page:
+**3. Render a page from a controller or a Minimal API endpoint**
 
 ```csharp
+// Controller
 public IActionResult Index()
 {
     return Inertia.Render("Dashboard", new
@@ -46,67 +48,131 @@ public IActionResult Index()
         User = user
     });
 }
+
+// Minimal API
+app.MapGet("/dashboard", () =>
+{
+    return Inertia.Render("Dashboard");
+});
 ```
 
-See the [installation guide](https://inertiacore.dev/getting-started) to create your root view and
-wire up the frontend.
+**4. Receive the props in your frontend component**
+
+```tsx
+// Pages/Dashboard.tsx
+type Props = {
+  user: { name: string; email: string }
+}
+
+export default function Dashboard({ user }: Props) {
+  return <h1>Welcome back, {user.name}</h1>
+}
+```
+
+That is the whole round trip: no REST endpoints, no client-side data fetching, no duplicated routing.
+The [installation guide](https://creator-solutions.github.io/InertiaCore/getting-started) covers the root view and the
+Vite setup that wires the frontend up.
+
+## Why InertiaCore
+
+This project started from the original [InertiaCore](https://github.com/kapi2289/InertiaCore) by
+Kacper Ziubryniewicz and has grown into a full Inertia.js v3 adapter. Compared with a bare-bones
+adapter, it adds:
+
+- The complete v3 protocol: deferred, once, merge and infinite-scroll props, partial reloads and error bags.
+- Minimal API support alongside MVC, with the same Inertia responses in both.
+- A resilient server-side rendering gateway, with health checks and Node process management.
+- First-class tooling: Vite integration, .NET Aspire resources and generated TypeScript types.
 
 ## Features
 
-- **Inertia.js v3**: full protocol support: request detection, version handling, partial reloads,
-  lazy props, shared props, redirects and error bags.
-- **MVC & Minimal APIs**: the same Inertia responses work in controllers and endpoint handlers.
-- **Rich props**: lazy and async props, deferred, once, merge and infinite-scroll props, with
-  per-prop rescue and DI-resolved props that share `HttpContext.RequestAborted`.
-- **Server-side rendering**: built-in SSR gateway support with a resilient client (total timeout,
-  retries with jitter, circuit breaker and an ASP.NET health check that reports Healthy, Degraded
-  or Unhealthy), plus opt-in management of the Node process (start, health check, crash restart
-  and graceful shutdown).
-- **Vite integration**: HMR detection, manifest resolution, module preloading, CSS handling, CSP
-  nonces and integrity hashes, plus an opt-in dev-time helper that starts the dev server for you.
-- **.NET Aspire**: the `InertiaCore.Aspire.Hosting` package runs the Vite dev server and Node SSR
-  process as Aspire resources with endpoints, health checks and dashboard logs.
-- **Validation & Precognition**: automatic `ModelState` error handling, `WithInertiaValidation()`
-  for Minimal API endpoints (303 back with errors for Inertia requests), and form precognition.
-- **Anti-forgery bridge**: opt-in `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header wiring that works with
-  `[AutoValidateAntiforgeryToken]` and `WithInertiaAntiforgery()`, with token rotation after
-  sign-in/sign-out.
-- **Error pages**: opt-in Inertia error component for `401`/`403`/`404`/`419`/`500`/`503`, with
-  cookie-auth login redirects converted to `409 + X-Inertia-Location` for Inertia requests.
-- **Shared data providers**: contribute shared props from services per request with
-  `AddInertiaSharedData<TProvider>()`, with an opt-in claims provider that shares `auth.user`.
-- **Typed end to end**: generate TypeScript declarations for your page props and typed route
-  helpers from your C# contracts with `InertiaCore.TypeGen`.
+| Area | What you get |
+| --- | --- |
+| **Protocol** | Inertia.js v3 support: request detection, version handling, partial reloads, lazy and shared props, redirects and error bags. |
+| **Props** | Lazy, async, deferred, once, merge and infinite-scroll props, with per-prop rescue and DI-resolved props that share `HttpContext.RequestAborted`. [Props guide](https://creator-solutions.github.io/InertiaCore/guide/props) |
+| **Server-side rendering** | Built-in SSR gateway with timeouts, retries with jitter, a circuit breaker and an ASP.NET health check. Opt-in management of the Node process. |
+| **Vite** | HMR detection, manifest resolution, module preloading, CSS handling, CSP nonces and integrity hashes, plus an opt-in helper that starts the dev server for you. |
+| **.NET Aspire** | Run the Vite dev server and Node SSR process as Aspire resources, with endpoints, health checks and dashboard logs. |
+| **Validation** | Automatic `ModelState` error handling, `WithInertiaValidation()` for Minimal API endpoints, and form precognition. |
+| **Security** | Opt-in `XSRF-TOKEN` / `X-XSRF-TOKEN` anti-forgery bridge with token rotation after sign-in and sign-out. [Security guide](https://creator-solutions.github.io/InertiaCore/security) |
+| **Error pages** | Opt-in Inertia error component for `401`, `403`, `404`, `419`, `500` and `503`, with login redirects converted to `409 + X-Inertia-Location`. |
+| **Shared data** | Contribute shared props from services with `AddInertiaSharedData<TProvider>()`, including an opt-in claims provider that shares `auth.user`. |
+| **TypeScript** | Generate page prop declarations and typed route helpers from your C# contracts. [TypeScript guide](https://creator-solutions.github.io/InertiaCore/typescript/) |
+
+Every option is covered in the [configuration reference](https://creator-solutions.github.io/InertiaCore/reference/configuration).
+
+## Typed end to end
+
+Define your page props once in C#:
+
+```csharp
+public record UserDto(string Name, string Email);
+public record DashboardProps(UserDto User);
+
+return Inertia.Render("Dashboard", new DashboardProps(user));
+```
+
+`InertiaCore.TypeGen` generates the matching TypeScript, so your components stay in sync with the
+server and a renamed property becomes a compile error instead of a runtime surprise:
+
+```ts
+export interface UserDto {
+  name: string
+  email: string
+}
+
+export interface DashboardProps {
+  user: UserDto
+}
+```
+
+See the [TypeScript guide](https://creator-solutions.github.io/InertiaCore/typescript/) for setup and typed route helpers.
+
+## Packages
+
+| Package | Purpose |
+| --- | --- |
+| [`InertiaCore.AspNetCore`](https://www.nuget.org/packages/InertiaCore.AspNetCore) | The core adapter: responses, middleware, props, SSR, Vite, validation and security. |
+| [`InertiaCore.Aspire.Hosting`](https://www.nuget.org/packages/InertiaCore.Aspire.Hosting) | Runs the Vite dev server and Node SSR process as .NET Aspire resources. |
+| [`InertiaCore.TypeGen`](https://www.nuget.org/packages/InertiaCore.TypeGen) | Generates TypeScript declarations and typed route helpers from your C# contracts. |
 
 ## Documentation
 
-Full guides and the configuration reference live at **https://inertiacore.dev**:
+Full guides and the configuration reference live at **[creator-solutions.github.io/InertiaCore](https://creator-solutions.github.io/InertiaCore/)**:
 
-- [Introduction](https://inertiacore.dev/introduction)
-- [Installation](https://inertiacore.dev/getting-started)
-- [Props](https://inertiacore.dev/guide/props)
-- [TypeScript](https://inertiacore.dev/typescript/)
-- [Security](https://inertiacore.dev/security)
-- [Configuration reference](https://inertiacore.dev/reference/configuration)
+- [Introduction](https://creator-solutions.github.io/InertiaCore/introduction)
+- [Installation](https://creator-solutions.github.io/InertiaCore/getting-started)
+- [Props](https://creator-solutions.github.io/InertiaCore/guide/props)
+- [TypeScript](https://creator-solutions.github.io/InertiaCore/typescript/)
+- [Security](https://creator-solutions.github.io/InertiaCore/security)
+- [Configuration reference](https://creator-solutions.github.io/InertiaCore/reference/configuration)
 
-The documentation source lives in [`docs/`](docs) and is built with
+The documentation source lives in [`docs/`](https://github.com/Creator-Solutions/InertiaCore/tree/main/docs) and is built with
 [VitePress](https://vitepress.dev). Run it locally with `cd docs && npm ci && npm run dev`.
 
-## Example applications
+## Examples
+
+Runnable samples live in the [`samples`](https://github.com/Creator-Solutions/InertiaCore/tree/main/samples) folder.
+
+Community examples:
 
 - Vue: [NejcBW/InertiaCoreVueTemplate](https://github.com/NejcBW/InertiaCoreVueTemplate)
 - React: [nicksoftware/React-AspnetCore-inertiaJS](https://github.com/nicksoftware/React-AspnetCore-inertiaJS)
 
-## Project
+## Contributing
 
-- [Changelog](CHANGELOG.md)
-- [Security policy](SECURITY.md)
-- [Contributing](https://inertiacore.dev/project/contributing)
-- [Examples](samples)
+Issues and pull requests are welcome. If InertiaCore is useful to you, a star on
+[GitHub](https://github.com/Creator-Solutions/InertiaCore) helps other .NET developers find it.
+
+- [Contributing guide](https://creator-solutions.github.io/InertiaCore/project/contributing)
+- [Changelog](https://github.com/Creator-Solutions/InertiaCore/blob/main/CHANGELOG.md)
+- [Security policy](https://github.com/Creator-Solutions/InertiaCore/blob/main/SECURITY.md)
+
+## Credits
 
 This project is based on the original [InertiaCore](https://github.com/kapi2289/InertiaCore) project
 by Kacper Ziubryniewicz.
 
 ## License
 
-Licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Licensed under the MIT License. See [LICENSE](https://github.com/Creator-Solutions/InertiaCore/blob/main/LICENSE) for details.
