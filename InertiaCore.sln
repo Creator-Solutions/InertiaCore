@@ -12,7 +12,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCore.TypeGen", "Iner
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCore.FluentValidation", "InertiaCore.FluentValidation\InertiaCore.FluentValidation.csproj", "{379A4664-F8C7-48AE-93A3-88B657E8F908}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCore.Aspire.Hosting", "InertiaCore.Aspire.Hosting\InertiaCore.Aspire.Hosting.csproj", "{E66B5CB1-E901-4A5B-A232-4F47227E4BD9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCore.Pagination", "InertiaCore.Pagination\InertiaCore.Pagination.csproj", "{E7E5F0D8-F8A2-41B1-8C6B-6F6E6A6B7C8D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCoreTests.Pagination", "InertiaCoreTests.Pagination\InertiaCoreTests.Pagination.csproj", "{F5E4D9C1-2A3B-4C6D-8F7A-1B2C3D4E5F6A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCoreTests.Aspire", "InertiaCoreTests.Aspire\InertiaCoreTests.Aspire.csproj", "{26E682B9-1F94-40BF-93A6-E517C3CF1587}"
 EndProject

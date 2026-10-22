@@ -330,4 +330,31 @@ public static class Configure
     private sealed class SsrHttpClientMarker
     {
     }
+
+    public static IServiceCollection AddInertiaPagination(this IServiceCollection services,
+        Action<InertiaPaginationOptions>? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // Register IHttpContextAccessor for ambient request access
+        services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+        // Configure pagination options
+        services.AddOptions<InertiaPaginationOptions>().Configure(options);
+
+        return services;
+    }
+
+    public static IApplicationBuilder UseInertiaPagination(this IApplicationBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        var accessor = app.ApplicationServices.GetRequiredService<IHttpContextAccessor>();
+        var paginationOptions = app.ApplicationServices.GetRequiredService<IOptions<InertiaPaginationOptions>>().Value;
+
+        InertiaPaginationAmbient.Configure(accessor, paginationOptions);
+
+        return app;
+    }
 }
+

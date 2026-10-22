@@ -1,69 +1,74 @@
-# Changelog
+### Pagination helpers (IN-74)
 
-### Vite dev server helper (IN-71)
-
-Start the Vite dev server as part of `dotnet run`. An opt-in, Development-only helper runs the
-configured package-manager script, waits for Vite's hot file, and stops the process on shutdown, so
-the frontend comes up with HMR without a second terminal.
+Typed pagination helpers for `IQueryable<T>` that produce Inertia’s page shape (`data`, `links`, `meta`) with clamped paging and generated links.
 
 #### Added
 
-- **`UseViteDevServer()`** (`InertiaCore.Extensions`) on `IApplicationBuilder`. It is a no-op
-  outside the Development environment and when the dev server is already running (the hot file
-  exists and the URL it contains is reachable). Options are bound from the `Vite:DevServer`
-  configuration section, then an optional delegate is applied.
-- **`ViteDevServerOptions`** (`InertiaCore.Models`) with `PackageManager`, `WorkingDirectory`,
-  `ScriptName`, `ReadyTimeout` and `HotFile`.
-- **`VitePackageManager`** (`InertiaCore.Models`) with `Npm`, `Pnpm`, `Yarn` and `Bun`.
+- **`InertiaCore.Pagination`** package with `ToInertiaPageAsync()` extension method on `IQueryable<T>`.
+- **`InertiaOptions.SsrResilience`** (reused from IN-69 for consistency).
+- **`InertiaPaginationOptions`** (`InertiaCore.Pagination`) with `DefaultPageSize`, `MaxPageSize`, `PageParameterName`, `RequireOrdering`.
+- **`InertiaPagedResult<T>`**, **`InertiaPaginationLinks`**, **`InertiaPaginationMeta`** (`InertiaCore.Pagination`) – result and metadata shapes.
+- **`AddInertiaPagination()`**, **`UseInertiaPagination()`** (`InertiaCore.Extensions`) – DI registration and ambient context.
+- **`InertiaPaginationAmbient`** (`InertiaCore.Pagination`) – internal ambient request context for ambient overloads.
+- **Unit tests** covering clamping, ordering, and link generation.
+- **Integration tests** with SQLite/in-memory `PaginationDbContext` (25 seeded items) and two endpoints (`/pagination/todos`, `/pagination/todos-summary`).
+- **Docs page** `docs/guide/pagination.md` with usage examples and configuration.
 
 #### Notes
 
-- On Windows the package manager runs through `cmd.exe` so the `.cmd` shims resolve; on other
-  platforms it runs directly. Shutdown kills the whole process tree, so `Ctrl+C` leaves no `node`
-  process behind.
-- The package-manager launch sits behind an internal interface so the lifecycle is unit tested
-  without a real process; an opt-in end-to-end test runs a Node fixture and asserts no orphaned
-  process remains after shutdown.
-- No breaking change to the existing public API. All additions are new members and the helper only
-  runs when `UseViteDevServer()` is called in Development.
+- Pagination helpers are opt‑in; no breaking change to existing public API.
+- Page and page‑size clamping prevent out‑of‑range requests and simplify client logic.
+- `RequireOrdering` can be disabled to allow unordered queries at the cost of unstable page boundaries.
+- Link generation preserves the current request path and all query parameters except the page parameter.
+- EF Core references are version‑matched per TFM (8.0.32 / 9.0.21 / 10.0.13) to align with the main package’s resilience handler.
 
 ---
-
-### .NET Aspire hosting (IN-70)
-
-Run the Vite dev server and the Node SSR process as .NET Aspire resources. A new
-`InertiaCore.Aspire.Hosting` package adds both processes to the application model so their
-endpoints, health and logs appear in the Aspire dashboard, and wires the web project to them
-through environment variables.
-
-#### Added
-
-- **`InertiaCore.Aspire.Hosting`** package with `AddInertiaViteApp`, `AddInertiaSsrApp` and
-  `WithInertiaReferences`. `AddInertiaViteApp` wraps `AddViteApp` and `AddInertiaSsrApp` wraps
-  `AddNodeApp` with an HTTP endpoint on `PORT` and a `/health` check; `WithInertiaReferences`
-  makes the web project wait for both resources and injects `Vite__HotUrl`, `Inertia__SsrEnabled`
-  and `Inertia__SsrUrl`.
-- **`ViteOptions.HotUrl`** — a dev server base URL supplied by an orchestrator. When set, the Vite
-  helper runs in hot mode and resolves assets against it instead of reading the `hot` file.
-- **`AddInertia(IConfiguration, ...)` and `AddViteHelper(IConfiguration, ...)`** overloads that bind
-  `InertiaOptions` and `ViteOptions` from the `Inertia` and `Vite` configuration sections, so an
-  orchestrator can supply values through environment variables.
-- **`samples/aspire`** — an AppHost, an Inertia web project and a Vite frontend demonstrating the
-  full wiring.
-
-#### Notes
-
-- Aspire owns the Node SSR process under this package. Leave `InertiaOptions.Ssr.Managed` disabled
-  for the web project and let `Inertia__SsrUrl` point at the Aspire resource. The managed process
-  feature (IN-68) remains for deployments without Aspire.
-- No breaking change to the existing public API. All core additions are new members and new
-  overloads; the default file-based hot detection is unchanged when `HotUrl` is left unset.
-- Aspire 13.x depends on the 10.0.x `Microsoft.Extensions.*` packages, so the Aspire integration
-  tests live in a net10.0-only test project; the library still targets net8.0, net9.0 and net10.0.
-
----
-
 ### SSR resilience pipeline (IN-69)
+
+Every SSR render call now travels through the standard resilience pipeline
+(`Microsoft.Extensions.Http.Resilience`): a total request timeout, retries with exponential
+backoff and jitter, a circuit breaker and a per‑attempt timeout. A down or slow SSR server
+degrades to client‑side rendering quickly and never fails the page, and an ASP.NET
+health check exposes the SSR state to load balancers and orchestrators.
+
+#### Added
+
+- **`InertiaOptions.SsrResilience`** (`InertiaSsrResilienceOptions`) with `MaxRetryAttempts`,
+  `RetryBaseDelay`, `AttemptTimeout`, `CircuitBreakerFailureRatio`,
+  `CircuitBreakerMinimumThroughput`, `CircuitBreakerSamplingDuration` and
+  `CircuitBreakerBreakDuration`. `SsrTimeout` remains the total budget for one render
+dispatch and now covers every attempt, retry delay and breaker interaction.
+- **`InertiaSsrHealthCheck`** — registered by `AddInertia()` as `inertia‑ssr` (tagged `ssr`).
+  Reports Healthy when SSR is disabled or the server answers, Degraded when the circuit
+  breaker is open (fail‑fast, no probe) and Unhealthy when the server cannot be reached.
+  The probe targets `SsrHealthUrl` when set, otherwise the origin of `SsrUrl` with `/health`
+  appended.
+- **`InertiaOptions.SsrHealthUrl`** — optional override for the health endpoint probed by the
+  health check.
+- **`InertiaSsrOptionsValidator`** also validates the resilience values at startup
+  (retry range, delay and timeout positivity, breaker ratio/throughput/duration floors,
+  health URL format).
+
+#### Changed
+
+- `Gateway` dispatches through the typed `inertia‑ssr` client with the resilience handler
+  and falls back to client‑side rendering on `BrokenCircuitException`,
+  `TimeoutRejectedException`, `RateLimiterRejectedException`, cancellation,
+  connection errors and malformed JSON, logging a distinct warning per cause. While the
+circuit is open the SSR call is skipped entirely.
+- `AddInertia()` registrations are idempotent: calling it more than once to layer options
+  no longer duplicates the SSR health check or nests a second resilience pipeline on the
+  SSR client.
+
+#### Notes
+
+- The resilience handler is registered unconditionally but is only exercised when SSR is
+  enabled; applications that do not use SSR are unaffected. The rate limiter runs at the
+  framework defaults (1000 permits/second).
+- No breaking change to the existing public API. All additions are new members.
+
+---
+### Managed SSR process lifecycle (IN-68)
 
 Every SSR render call now travels through the standard resilience pipeline
 (`Microsoft.Extensions.Http.Resilience`): a total request timeout, retries with exponential

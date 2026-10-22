@@ -1,0 +1,14 @@
+    <ItemGroup>
+        <InternalsVisibleTo Include="InertiaCoreTests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="../LICENSE" Pack="true" PackagePath="" />
+        <None Include="../README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
+</Project>
+
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCore.Aspire.Hosting", "InertiaCore.Aspire.Hosting\InertiaCore.Aspire.Hosting.csproj", "{E66B5CB1-E901-4A5B-A232-4F47227E4BD9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InertiaCore.Pagination", "InertiaCore.Pagination\InertiaCore.Pagination.csproj", "{E7E5F0D8-F8A2-41B1-8C6B-6F6E6A6B7C8D}"
+EndProject
