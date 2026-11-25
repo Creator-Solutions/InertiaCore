@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using InertiaCore.Logging;
 using InertiaCore.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -35,7 +36,7 @@ namespace InertiaCore.Ssr;
 /// appending <c>/health</c>.
 /// </para>
 /// </remarks>
-public sealed class InertiaSsrHealthCheck : IHealthCheck
+public sealed partial class InertiaSsrHealthCheck : IHealthCheck
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptions<InertiaOptions> _options;
@@ -113,10 +114,13 @@ public sealed class InertiaSsrHealthCheck : IHealthCheck
         }
         catch (HttpRequestException ex)
         {
-            _logger?.LogDebug(ex, "Inertia SSR health probe to {Url} failed.", healthUrl);
+            SsrHealthProbeFailed(ex, healthUrl);
             return HealthCheckResult.Unhealthy($"The SSR health endpoint {healthUrl} could not be reached: {ex.Message}");
         }
     }
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrHealthProbeFailed, Level = LogLevel.Debug, Message = "Inertia SSR health probe to {Url} failed.")]
+    private partial void SsrHealthProbeFailed(Exception exception, string url);
 
     private string? ResolveHealthUrl(InertiaOptions options)
     {

@@ -5,9 +5,11 @@ using InertiaCore;
 using InertiaCore.FluentValidation;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
+using InertiaCore.Pagination;
 using InertiaCore.Props;
 using InertiaCoreTests.TestApp;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInertia(options =>
@@ -149,8 +151,9 @@ if (builder.Configuration.GetValue<bool>("UsePagination"))
 {
     builder.Services.AddInertiaPagination();
     builder.Services.AddDbContext<PaginationDbContext>(options =>
-        options.UseSqlite("Data Source=:memory:", b => b.EnableRetryOnFailure().UseQuerySplitting()))
-        .AddDbContextPool<PaginationDbContext>();
+    {
+        options.UseSqlite("Data Source=:memory:");
+    });
 }
 
 // Development-time Vite dev server helper (IN-71). Opt-in; the integration test registers a
@@ -479,7 +482,7 @@ if (builder.Configuration.GetValue<bool>("UsePagination"))
             .OrderBy(t => t.Title)
             .ToInertiaPageAsync(page ?? 1, pageSize ?? 0, ct);
 
-        return (IResult)await Inertia.Render("Pagination/Todos", new { Todos = result });
+        return (IResult)Inertia.Render("Pagination/Todos", new { Todos = result });
     });
 
     app.MapGet("/pagination/todos-summary", async (PaginationDbContext db, int? page, CancellationToken ct) =>
@@ -488,7 +491,7 @@ if (builder.Configuration.GetValue<bool>("UsePagination"))
             .OrderBy(t => t.Title)
             .ToInertiaPageAsync(db => new TodoSummary(db.Id, db.Title), page ?? 1, 0, ct);
 
-        return (IResult)await Inertia.Render("Pagination/TodosSummary", new { Todos = result });
+        return (IResult)Inertia.Render("Pagination/TodosSummary", new { Todos = result });
     });
 }
 

@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using InertiaCore.Logging;
 using InertiaCore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -17,8 +18,7 @@ internal interface IGateway
     public Task<SsrResponse?> Dispatch(object model, string url);
 }
 
-internal class Gateway : IGateway
-{
+internal partial class Gateway : IGateway{
     private readonly InertiaSsrClient _client;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly InertiaOptions _inertiaOptions;
@@ -46,9 +46,7 @@ internal class Gateway : IGateway
     {
         if (!TryGetValidUri(url, out var uri))
         {
-            _logger?.LogWarning(
-                "Inertia SSR URL '{Url}' is not a valid absolute http/https URL; falling back to client-side rendering.",
-                url);
+            SsrInvalidUrl(url);
             return null;
         }
 
@@ -63,10 +61,7 @@ internal class Gateway : IGateway
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger?.LogWarning(
-                    "Inertia SSR request to {Url} failed with status {Status}; falling back to client-side rendering.",
-                    uri,
-                    (int)response.StatusCode);
+                SsrRequestFailedStatus(uri, (int)response.StatusCode);
                 return null;
             }
 
@@ -75,19 +70,14 @@ internal class Gateway : IGateway
 
             if (bytes is null)
             {
-                _logger?.LogWarning(
-                    "Inertia SSR response from {Url} exceeded the {Limit} byte limit; falling back to client-side rendering.",
-                    uri,
-                    _inertiaOptions.SsrMaxResponseBytes);
+                SsrResponseTooLarge(uri, _inertiaOptions.SsrMaxResponseBytes);
                 return null;
             }
 
             var parsed = JsonSerializer.Deserialize<SsrResponse>(bytes, _jsonOptions);
             if (parsed?.Body is null)
             {
-                _logger?.LogWarning(
-                    "Inertia SSR response from {Url} had no body; falling back to client-side rendering.",
-                    uri);
+                SsrNoBody(uri);
                 return null;
             }
 
@@ -95,51 +85,62 @@ internal class Gateway : IGateway
         }
         catch (BrokenCircuitException)
         {
-            _logger?.LogWarning(
-                "Inertia SSR circuit breaker for {Url} is open; skipping the request and rendering client-side.",
-                uri);
+            SsrCircuitOpen(uri);
             return null;
         }
         catch (TimeoutRejectedException)
         {
-            _logger?.LogWarning(
-                "Inertia SSR request to {Url} timed out after {Timeout}; falling back to client-side rendering.",
-                uri,
-                _inertiaOptions.SsrTimeout);
+            SsrTimedOut(uri, _inertiaOptions.SsrTimeout);
             return null;
         }
         catch (RateLimiterRejectedException)
         {
-            _logger?.LogWarning(
-                "Inertia SSR request to {Url} was rejected by the client rate limiter; falling back to client-side rendering.",
-                uri);
+            SsrRateLimited(uri);
             return null;
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogWarning(
-                "Inertia SSR request to {Url} timed out after {Timeout}; falling back to client-side rendering.",
-                uri,
-                _inertiaOptions.SsrTimeout);
+            SsrTimedOut(uri, _inertiaOptions.SsrTimeout);
             return null;
         }
         catch (HttpRequestException ex)
         {
-            _logger?.LogWarning(
-                ex,
-                "Inertia SSR request to {Url} failed; falling back to client-side rendering.",
-                uri);
+            SsrHttpFailed(uri, ex);
             return null;
         }
         catch (JsonException ex)
         {
-            _logger?.LogWarning(
-                ex,
-                "Inertia SSR response from {Url} was not valid JSON; falling back to client-side rendering.",
-                uri);
+            SsrInvalidJson(uri, ex);
             return null;
         }
     }
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrInvalidUrl, Level = LogLevel.Warning, Message = "Inertia SSR URL '{Url}' is not a valid absolute http/https URL; falling back to client-side rendering.")]
+    private partial void SsrInvalidUrl(string url);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrRequestFailedStatus, Level = LogLevel.Warning, Message = "Inertia SSR request to {Url} failed with status {Status}; falling back to client-side rendering.")]
+    private partial void SsrRequestFailedStatus(Uri url, int status);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrResponseTooLarge, Level = LogLevel.Warning, Message = "Inertia SSR response from {Url} exceeded the {Limit} byte limit; falling back to client-side rendering.")]
+    private partial void SsrResponseTooLarge(Uri url, long limit);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrNoBody, Level = LogLevel.Warning, Message = "Inertia SSR response from {Url} had no body; falling back to client-side rendering.")]
+    private partial void SsrNoBody(Uri url);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrCircuitOpen, Level = LogLevel.Warning, Message = "Inertia SSR circuit breaker for {Url} is open; skipping the request and rendering client-side.")]
+    private partial void SsrCircuitOpen(Uri url);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrTimedOut, Level = LogLevel.Warning, Message = "Inertia SSR request to {Url} timed out after {Timeout}; falling back to client-side rendering.")]
+    private partial void SsrTimedOut(Uri url, TimeSpan timeout);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrRateLimited, Level = LogLevel.Warning, Message = "Inertia SSR request to {Url} was rejected by the client rate limiter; falling back to client-side rendering.")]
+    private partial void SsrRateLimited(Uri url);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrHttpFailed, Level = LogLevel.Warning, Message = "Inertia SSR request to {Url} failed; falling back to client-side rendering.")]
+    private partial void SsrHttpFailed(Uri url, Exception exception);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrInvalidJson, Level = LogLevel.Warning, Message = "Inertia SSR response from {Url} was not valid JSON; falling back to client-side rendering.")]
+    private partial void SsrInvalidJson(Uri url, Exception exception);
 
     private static bool TryGetValidUri(string url, out Uri uri)
     {

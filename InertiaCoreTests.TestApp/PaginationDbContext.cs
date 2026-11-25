@@ -27,7 +27,7 @@ namespace InertiaCoreTests.TestApp
         {
         }
 
-        protected override void OnModelCreating(ModelBuildingContext modelBuilder)
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 

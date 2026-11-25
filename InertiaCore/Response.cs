@@ -1,5 +1,6 @@
 using System.Text.Json;
 using InertiaCore.Extensions;
+using InertiaCore.Logging;
 using InertiaCore.Models;
 using InertiaCore.Props;
 using InertiaCore.Services;
@@ -16,8 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace InertiaCore;
 
-public class Response : IActionResult, IResult
-{
+public partial class Response : IActionResult, IResult{
     private readonly string _component;
     private readonly Dictionary<string, object?> _props;
     private readonly string _rootView;
@@ -706,8 +706,12 @@ public class Response : IActionResult, IResult
     private void LogRescuedProp(string key, Exception exception)
     {
         var logger = _context?.HttpContext?.RequestServices?.GetService(typeof(ILogger<Response>)) as ILogger<Response>;
-        logger?.LogError(exception, "Rescued Inertia prop '{Prop}' after it failed to resolve.", key);
+        if (logger is not null)
+            PropResolutionFailed(logger, exception, key);
     }
+
+    [LoggerMessage(EventId = InertiaLogEvents.PropResolutionFailed, Level = LogLevel.Error, Message = "Rescued Inertia prop '{Prop}' after it failed to resolve.")]
+    private static partial void PropResolutionFailed(ILogger logger, Exception exception, string prop);
 
     protected internal JsonResult GetJson()
     {

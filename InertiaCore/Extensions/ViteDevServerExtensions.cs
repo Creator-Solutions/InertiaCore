@@ -2,6 +2,7 @@ using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using InertiaCore.DevServer;
+using InertiaCore.Logging;
 using InertiaCore.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +16,7 @@ namespace InertiaCore.Extensions;
 /// <summary>
 /// Development-time helper that starts the Vite dev server alongside the application.
 /// </summary>
-public static class ViteDevServerExtensions
+public static partial class ViteDevServerExtensions
 {
     /// <summary>
     /// Starts the configured package-manager script (for example <c>npm run dev</c>),
@@ -56,8 +57,7 @@ public static class ViteDevServerExtensions
         var viteOptions = services.GetService<IOptions<ViteOptions>>();
         if (viteOptions is null)
         {
-            logger.LogDebug(
-                "Vite options are not registered; call AddViteHelper() so the hot file path can be resolved.");
+            logger.ViteOptionsNotRegistered();
         }
 
         var launcher = services.GetService<IViteDevProcessLauncher>() ?? new ViteDevProcessLauncher();
@@ -85,12 +85,17 @@ public static class ViteDevServerExtensions
         }
         else
         {
-            logger.LogWarning(
-                "IHostApplicationLifetime is not registered; the Vite dev server process may not be stopped on shutdown.");
+            logger.ViteLifetimeNotRegistered();
         }
 
         server.StartAsync(lifetime?.ApplicationStopping ?? default).GetAwaiter().GetResult();
 
         return app;
     }
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteOptionsNotRegistered, Level = LogLevel.Debug, Message = "Vite options are not registered; call AddViteHelper() so the hot file path can be resolved.")]
+    public static partial void ViteOptionsNotRegistered(this ILogger logger);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteLifetimeNotRegistered, Level = LogLevel.Warning, Message = "IHostApplicationLifetime is not registered; the Vite dev server process may not be stopped on shutdown.")]
+    public static partial void ViteLifetimeNotRegistered(this ILogger logger);
 }
