@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using InertiaCore.Logging;
 using InertiaCore.Models;
 using InertiaCore.Utils;
 using Microsoft.Extensions.Hosting;
@@ -22,7 +23,7 @@ namespace InertiaCore.Ssr;
 /// is enabled and it is a no-op when <see cref="InertiaOptions.SsrEnabled"/> is
 /// <see langword="false"/> or when the Vite dev server is running.
 /// </remarks>
-internal sealed class InertiaSsrHostedService : IHostedService
+internal sealed partial class InertiaSsrHostedService : IHostedService
 {
     private readonly IInertiaSsrProcessLauncher _launcher;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -59,15 +60,13 @@ internal sealed class InertiaSsrHostedService : IHostedService
 
         if (!_options.SsrEnabled)
         {
-            _logger.LogInformation(
-                "Managed SSR is enabled but SSR is disabled (SsrEnabled is false); the SSR process will not be started.");
+            SsrManagedDisabled();
             return Task.CompletedTask;
         }
 
         if (IsViteRunning())
         {
-            _logger.LogInformation(
-                "Managed SSR is enabled but the Vite dev server is running; the SSR process will not be started.");
+            SsrManagedViteRunning();
             return Task.CompletedTask;
         }
 
@@ -110,7 +109,7 @@ internal sealed class InertiaSsrHostedService : IHostedService
         _process.Exited += OnProcessExited;
         _process.Start();
 
-        _logger.LogInformation("Started managed SSR process (pid {Pid}).", _process.Id);
+        SsrManagedStarted(_process.Id);
 
         _ = PumpAsync(_process, isError: false);
         _ = PumpAsync(_process, isError: true);
@@ -118,14 +117,11 @@ internal sealed class InertiaSsrHostedService : IHostedService
         if (await WaitForHealthAsync(cancellationToken).ConfigureAwait(false))
         {
             _restartCount = 0;
-            _logger.LogInformation("Managed SSR process is healthy at {Url}.", _options.Ssr.HealthUrl);
+            SsrManagedHealthy(_options.Ssr.HealthUrl);
             return;
         }
 
-        _logger.LogError(
-            "Managed SSR process did not become healthy at {Url} within {Timeout}; killing it. Rendering will fall back to the client.",
-            _options.Ssr.HealthUrl,
-            _options.Ssr.StartupTimeout);
+        SsrManagedUnhealthy(_options.Ssr.HealthUrl, _options.Ssr.StartupTimeout);
 
         await KillProcessAsync().ConfigureAwait(false);
     }
@@ -184,8 +180,8 @@ internal sealed class InertiaSsrHostedService : IHostedService
 
                 if (line is null) break;
 
-                if (isError) _logger.LogWarning("[ssr:stderr] {Line}", line);
-                else _logger.LogInformation("[ssr:stdout] {Line}", line);
+                if (isError) SsrStdErr(line);
+                else SsrStdOut(line);
             }
         }
         catch (OperationCanceledException)
@@ -193,7 +189,7 @@ internal sealed class InertiaSsrHostedService : IHostedService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "SSR process output stream ended.");
+            SsrStreamEnded(ex);
         }
     }
 
@@ -212,31 +208,24 @@ internal sealed class InertiaSsrHostedService : IHostedService
             if (_shuttingDown) return;
 
             var exitCode = TryGetExitCode();
-            _logger.LogError(
-                "Managed SSR process exited unexpectedly with code {ExitCode}.",
-                exitCode);
+            SsrProcessExited(exitCode);
 
             if (_options.Ssr.RestartPolicy == RestartPolicy.None)
             {
-                _logger.LogWarning("RestartPolicy is None; the SSR process will not be restarted.");
+                SsrRestartNone();
                 return;
             }
 
             if (_options.Ssr.MaxRestarts >= 0 && _restartCount >= _options.Ssr.MaxRestarts)
             {
-                _logger.LogError(
-                    "Managed SSR process exceeded the maximum number of restarts ({Max}); giving up. Rendering will fall back to the client.",
-                    _options.Ssr.MaxRestarts);
+            SsrMaxRestartsExceeded(_options.Ssr.MaxRestarts);
                 return;
             }
 
             var backoff = ComputeBackoff(_restartCount);
             _restartCount++;
 
-            _logger.LogInformation(
-                "Restarting managed SSR process in {Backoff} (attempt {Attempt}).",
-                backoff,
-                _restartCount);
+            SsrRestarting(backoff, _restartCount);
 
             try
             {
@@ -285,7 +274,7 @@ internal sealed class InertiaSsrHostedService : IHostedService
     {
         if (_process is null) return;
 
-        _logger.LogInformation("Shutting down managed SSR process (pid {Pid}).", _process.Id);
+        SsrShuttingDown(_process.Id);
 
         await TryGracefulShutdownAsync().ConfigureAwait(false);
 
@@ -295,9 +284,7 @@ internal sealed class InertiaSsrHostedService : IHostedService
 
         if (!exited)
         {
-            _logger.LogWarning(
-                "Managed SSR process did not shut down within {Timeout}; killing the process tree.",
-                _options.Ssr.ShutdownTimeout);
+                SsrShutdownTimeout(_options.Ssr.ShutdownTimeout);
             _process.Kill();
         }
 
@@ -349,6 +336,51 @@ internal sealed class InertiaSsrHostedService : IHostedService
         _process = null;
     }
 
+    [LoggerMessage(EventId = InertiaLogEvents.SsrManagedDisabled, Level = LogLevel.Information, Message = "Managed SSR is enabled but SSR is disabled (SsrEnabled is false); the SSR process will not be started.")]
+    private partial void SsrManagedDisabled();
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrManagedViteRunning, Level = LogLevel.Information, Message = "Managed SSR is enabled but the Vite dev server is running; the SSR process will not be started.")]
+    private partial void SsrManagedViteRunning();
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrManagedStarted, Level = LogLevel.Information, Message = "Started managed SSR process (pid {Pid}).")]
+    private partial void SsrManagedStarted(int pid);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrManagedHealthy, Level = LogLevel.Information, Message = "Managed SSR process is healthy at {Url}.")]
+    private partial void SsrManagedHealthy(string url);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrManagedUnhealthy, Level = LogLevel.Error, Message = "Managed SSR process did not become healthy at {Url} within {Timeout}; killing it. Rendering will fall back to the client.")]
+    private partial void SsrManagedUnhealthy(string url, TimeSpan timeout);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrStdErr, Level = LogLevel.Warning, Message = "[ssr:stderr] {Line}")]
+    private partial void SsrStdErr(string line);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrStdOut, Level = LogLevel.Information, Message = "[ssr:stdout] {Line}")]
+    private partial void SsrStdOut(string line);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrStreamEnded, Level = LogLevel.Debug, Message = "SSR process output stream ended.")]
+    private partial void SsrStreamEnded(Exception exception);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrProcessExited, Level = LogLevel.Error, Message = "Managed SSR process exited unexpectedly with code {ExitCode}.")]
+    private partial void SsrProcessExited(int exitCode);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrRestartNone, Level = LogLevel.Warning, Message = "RestartPolicy is None; the SSR process will not be restarted.")]
+    private partial void SsrRestartNone();
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrMaxRestartsExceeded, Level = LogLevel.Error, Message = "Managed SSR process exceeded the maximum number of restarts ({Max}); giving up. Rendering will fall back to the client.")]
+    private partial void SsrMaxRestartsExceeded(int max);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrRestarting, Level = LogLevel.Information, Message = "Restarting managed SSR process in {Backoff} (attempt {Attempt}).")]
+    private partial void SsrRestarting(TimeSpan backoff, int attempt);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrShuttingDown, Level = LogLevel.Information, Message = "Shutting down managed SSR process (pid {Pid}).")]
+    private partial void SsrShuttingDown(int pid);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrShutdownTimeout, Level = LogLevel.Warning, Message = "Managed SSR process did not shut down within {Timeout}; killing the process tree.")]
+    private partial void SsrShutdownTimeout(TimeSpan timeout);
+
+    [LoggerMessage(EventId = InertiaLogEvents.SsrViteProbeFailed, Level = LogLevel.Debug, Message = "Could not determine whether the Vite dev server is running.")]
+    private partial void SsrViteProbeFailed(Exception exception);
+
     private bool IsViteRunning()
     {
         var vite = _serviceProvider.GetService(typeof(IViteBuilder)) as IViteBuilder;
@@ -360,7 +392,7 @@ internal sealed class InertiaSsrHostedService : IHostedService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not determine whether the Vite dev server is running.");
+            SsrViteProbeFailed(ex);
             return false;
         }
     }

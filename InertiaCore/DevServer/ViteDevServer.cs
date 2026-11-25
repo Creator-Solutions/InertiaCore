@@ -3,6 +3,7 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using InertiaCore.Logging;
 using InertiaCore.Models;
 using InertiaCore.Ssr;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ namespace InertiaCore.DevServer;
 /// the URL it contains is reachable), so a developer who started Vite by hand is not
 /// affected. It is only used from <c>UseViteDevServer()</c>, which is Development-only.
 /// </remarks>
-internal sealed class ViteDevServer : IAsyncDisposable
+internal sealed partial class ViteDevServer : IAsyncDisposable
 {
     private readonly IViteDevProcessLauncher _launcher;
     private readonly IFileSystem _fileSystem;
@@ -61,10 +62,7 @@ internal sealed class ViteDevServer : IAsyncDisposable
     {
         if (await IsAlreadyRunningAsync(cancellationToken).ConfigureAwait(false))
         {
-            _logger.LogInformation(
-                "The Vite dev server is already running (hot file {HotFile} is present and reachable); " +
-                "the helper will not start another.",
-                HotFilePath);
+            ViteAlreadyRunning(HotFilePath);
             return true;
         }
 
@@ -74,8 +72,7 @@ internal sealed class ViteDevServer : IAsyncDisposable
         _process.Exited += OnProcessExited;
         _process.Start();
 
-        _logger.LogInformation(
-            "Started the Vite dev server with {PackageManager} run {Script} in {Directory} (pid {Pid}).",
+        ViteStarted(
             _options.PackageManager.ToString().ToLowerInvariant(),
             _options.ScriptName,
             workingDirectory,
@@ -86,13 +83,11 @@ internal sealed class ViteDevServer : IAsyncDisposable
 
         if (await WaitForHotFileAsync(cancellationToken).ConfigureAwait(false))
         {
-            _logger.LogInformation("The Vite dev server is ready (hot file {HotFile}).", HotFilePath);
+            ViteReady(HotFilePath);
             return true;
         }
 
-        _logger.LogError(
-            "The Vite dev server did not write its hot file within {Timeout}; stopping it.",
-            _options.ReadyTimeout);
+        ViteNotReady(_options.ReadyTimeout);
 
         await StopProcessAsync().ConfigureAwait(false);
         return false;
@@ -134,7 +129,7 @@ internal sealed class ViteDevServer : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not probe the existing Vite dev server URL.");
+            ViteProbeFailed(ex);
             return false;
         }
     }
@@ -179,8 +174,8 @@ internal sealed class ViteDevServer : IAsyncDisposable
 
                 if (line is null) break;
 
-                if (isError) _logger.LogWarning("[vite:stderr] {Line}", line);
-                else _logger.LogInformation("[vite:stdout] {Line}", line);
+                if (isError) ViteStdErr(line);
+                else ViteStdOut(line);
             }
         }
         catch (OperationCanceledException)
@@ -188,15 +183,45 @@ internal sealed class ViteDevServer : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "The Vite dev server output stream ended.");
+            ViteStreamEnded(ex);
         }
     }
 
     private void OnProcessExited(object? sender, EventArgs e)
     {
         if (_disposed || _intentionalStop) return;
-        _logger.LogWarning("The Vite dev server process exited.");
+        ViteProcessExited();
     }
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteAlreadyRunning, Level = LogLevel.Information, Message = "The Vite dev server is already running (hot file {HotFile} is present and reachable); the helper will not start another.")]
+    private partial void ViteAlreadyRunning(string hotFile);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteStarted, Level = LogLevel.Information, Message = "Started the Vite dev server with {PackageManager} run {Script} in {Directory} (pid {Pid}).")]
+    private partial void ViteStarted(string packageManager, string script, string directory, int pid);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteReady, Level = LogLevel.Information, Message = "The Vite dev server is ready (hot file {HotFile}).")]
+    private partial void ViteReady(string hotFile);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteNotReady, Level = LogLevel.Error, Message = "The Vite dev server did not write its hot file within {Timeout}; stopping it.")]
+    private partial void ViteNotReady(TimeSpan timeout);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteProbeFailed, Level = LogLevel.Debug, Message = "Could not probe the existing Vite dev server URL.")]
+    private partial void ViteProbeFailed(Exception exception);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteStdErr, Level = LogLevel.Warning, Message = "[vite:stderr] {Line}")]
+    private partial void ViteStdErr(string line);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteStdOut, Level = LogLevel.Information, Message = "[vite:stdout] {Line}")]
+    private partial void ViteStdOut(string line);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteStreamEnded, Level = LogLevel.Debug, Message = "The Vite dev server output stream ended.")]
+    private partial void ViteStreamEnded(Exception exception);
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteProcessExited, Level = LogLevel.Warning, Message = "The Vite dev server process exited.")]
+    private partial void ViteProcessExited();
+
+    [LoggerMessage(EventId = InertiaLogEvents.ViteStopping, Level = LogLevel.Information, Message = "Stopping the Vite dev server (pid {Pid}).")]
+    private partial void ViteStopping(int pid);
 
     private string ResolveWorkingDirectory()
     {
@@ -229,7 +254,7 @@ internal sealed class ViteDevServer : IAsyncDisposable
         if (_process is null) return;
 
         _intentionalStop = true;
-        _logger.LogInformation("Stopping the Vite dev server (pid {Pid}).", _process.Id);
+        ViteStopping(_process.Id);
 
         try
         {

@@ -1,9 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json.Serialization;
-using InertiaCore.Models;
+using System.Linq.Expressions;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using InertiaCore.Pagination;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace InertiaCore.Extensions
 {
@@ -23,9 +32,11 @@ namespace InertiaCore.Extensions
             
             // Register IHttpContextAccessor for ambient request access
             services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-            
-            // Configure pagination options
-            services.AddOptions<InertiaPaginationOptions>().Configure(configure);
+
+            if (configure == null)
+                services.AddOptions<InertiaPaginationOptions>();
+            else
+                services.AddOptions<InertiaPaginationOptions>().Configure(configure);
             
             return services;
         }
@@ -56,7 +67,7 @@ namespace InertiaCore.Extensions
 
 namespace InertiaCore.Pagination
 {
-    internal static class InertiaPaginationExtensions
+    public static class InertiaPaginationExtensions
     {
         /// <summary>
         /// Paginate an <see cref="IQueryable{T}"/> to an <see cref="InertiaPagedResult{T}"/>
@@ -66,9 +77,10 @@ namespace InertiaCore.Pagination
         /// <param name="query">The query to paginate.</param>
         /// <param name="page">The page number (1‑based). Values ≤ 0 are clamped to 1.</param>
         /// <param name="pageSize">The number of items per page. 0 means use <see cref="InertiaPaginationOptions.DefaultPageSize"/>.</param>
+        /// <param name="cancellationToken">A token that cancels the query.</param>
         /// <returns>A page result with data, links, and metadata.</returns>
         public static async Task<InertiaPagedResult<T>> ToInertiaPageAsync<T>(this IQueryable<T> query, int page = 1, int pageSize = 0, CancellationToken cancellationToken = default)
-            => await ToInertiaPageAsync(query, null, null, page, pageSize, cancellationToken).ConfigureAwait(false);
+            => await ToInertiaPageCoreAsync<T, T>(query, null, null, page, pageSize, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Paginate an <see cref="IQueryable{T}"/> to an <see cref="InertiaPagedResult{T}"/>
@@ -80,7 +92,7 @@ namespace InertiaCore.Pagination
         /// <param name="page">The page number (1‑based). Values ≤ 0 are clamped to 1.</param>
         /// <param name="pageSize">The number of items per page. 0 means use <see cref="InertiaPaginationOptions.DefaultPageSize"/>.</param>
         public static async Task<InertiaPagedResult<T>> ToInertiaPageAsync<T>(this IQueryable<T> query, HttpRequest? request, int page = 1, int pageSize = 0, CancellationToken cancellationToken = default)
-            => await ToInertiaPageAsync(query, request, null, page, pageSize, cancellationToken).ConfigureAwait(false);
+            => await ToInertiaPageCoreAsync<T, T>(query, request, null, page, pageSize, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Paginate an <see cref="IQueryable{T}"/> to an <see cref="InertiaPagedResult{TProjection}"/>
@@ -93,7 +105,7 @@ namespace InertiaCore.Pagination
         /// <param name="page">The page number (1‑based). Values ≤ 0 are clamped to 1.</param>
         /// <param name="pageSize">The number of items per page. 0 means use <see cref="InertiaPaginationOptions.DefaultPageSize"/>.</param>
         public static async Task<InertiaPagedResult<TProjection>> ToInertiaPageAsync<T, TProjection>(this IQueryable<T> query, Expression<Func<T, TProjection>> selector, int page = 1, int pageSize = 0, CancellationToken cancellationToken = default)
-            => await ToInertiaPageAsync(query, null, selector, page, pageSize, cancellationToken).ConfigureAwait(false);
+            => await ToInertiaPageCoreAsync(query, null, selector, page, pageSize, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Paginate an <see cref="IQueryable{T}"/> to an <see cref="InertiaPagedResult{TProjection}"/>
@@ -107,22 +119,20 @@ namespace InertiaCore.Pagination
         /// <param name="page">The page number (1‑based). Values ≤ 0 are clamped to 1.</param>
         /// <param name="pageSize">The number of items per page. 0 means use <see cref="InertiaPaginationOptions.DefaultPageSize"/>.</param>
         public static async Task<InertiaPagedResult<TProjection>> ToInertiaPageAsync<T, TProjection>(this IQueryable<T> query, HttpRequest? request, Expression<Func<T, TProjection>> selector, int page = 1, int pageSize = 0, CancellationToken cancellationToken = default)
-            => await ToInertiaPageAsync(query, request, selector, page, pageSize, cancellationToken).ConfigureAwait(false);
+            => await ToInertiaPageCoreAsync(query, request, selector, page, pageSize, cancellationToken).ConfigureAwait(false);
 
         /// <summary>
         /// Internal implementation shared by all overloads.
         /// </summary>
-        private static async Task<InertiaPagedResult<TItem>> ToInertiaPageAsync<T, TItem>(this IQueryable<T> query, HttpRequest? request, Expression<Func<T, TItem>>? selector, int page, int pageSize, CancellationToken cancellationToken)
+        private static async Task<InertiaPagedResult<TItem>> ToInertiaPageCoreAsync<T, TItem>(this IQueryable<T> query, HttpRequest? request, Expression<Func<T, TItem>>? selector, int page, int pageSize, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(query);
 
             var (resolvedRequest, options) = InertiaPaginationAmbient.Resolve(request);
             (int total, int perPage, int currentPage, int lastPage) = ResolvePaging(query, options, page, pageSize);
 
-            // Compute data range
-            (int from, int to) = total == 0
-                ? (null, null)
-                : (currentPage * perPage - perPage + 1, currentPage * perPage);
+            int? from = total == 0 ? null : currentPage * perPage - perPage + 1;
+            int? to = total == 0 ? null : currentPage * perPage;
 
             // Fetch data
             List<TItem> items = total == 0
@@ -170,7 +180,7 @@ namespace InertiaCore.Pagination
             return (total, perPage, currentPage, lastPage);
         }
 
-        private static string BuildPath(HttpRequest? request, InertiaPaginationOptions options)
+        public static string BuildPath(HttpRequest? request, InertiaPaginationOptions options)
         {
             if (request is not { Path.HasValue: true }) return "/";
 
@@ -200,7 +210,7 @@ namespace InertiaCore.Pagination
             return sb.ToString();
         }
 
-        private static string BuildLink(HttpRequest? request, InertiaPaginationOptions options, string path, int pageNumber)
+        public static string BuildLink(HttpRequest? request, InertiaPaginationOptions options, string path, int pageNumber)
         {
             if (request is null)
                 return pageNumber == 1 ? path : path + "?" + options.PageParameterName + "=" + pageNumber;
@@ -213,7 +223,7 @@ namespace InertiaCore.Pagination
                     parameters.Add(pair);
             }
 
-            parameters.Add(new KeyValuePair<string, StringValues>(options.PageParameterName, pageNumber));
+            parameters.Add(new KeyValuePair<string, StringValues>(options.PageParameterName, pageNumber.ToString()));
             var queryString = QueryString.Create(parameters);
             return path + queryString.Value;
         }

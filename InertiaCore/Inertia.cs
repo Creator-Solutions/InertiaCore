@@ -49,6 +49,11 @@ public static class Inertia
 
     private static IServiceProvider? RequestServices => _contextAccessor?.HttpContext?.RequestServices;
 
+    /// <summary>
+    /// Services for the active request, used by cursor pagination to resolve Data Protection.
+    /// </summary>
+    internal static IServiceProvider? CurrentRequestServices => RequestServices;
+
     private static IResponseFactory GetFactory()
     {
         if (RequestServices?.GetService(typeof(IResponseFactory)) is IResponseFactory factory)

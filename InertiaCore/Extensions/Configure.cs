@@ -1,10 +1,12 @@
 using System.Net;
+using InertiaCore;
 using InertiaCore.Contracts;
 using InertiaCore.DevServer;
 using InertiaCore.Filters;
 using InertiaCore.Middleware;
 using InertiaCore.Models;
 using InertiaCore.Resolvers;
+using InertiaCore.Logging;
 using InertiaCore.Services;
 using InertiaCore.Services.Version;
 using InertiaCore.Ssr;
@@ -21,14 +23,33 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace InertiaCore.Extensions;
 
-public static class Configure
+public static partial class Configure
 {
     public static IApplicationBuilder UseInertia(this IApplicationBuilder app)
     {
+        app.Use(async (HttpContext context, Func<Task> next) =>
+        {
+            try
+            {
+                await next();
+            }
+            catch (InertiaCursorException) when (!context.Response.HasStarted)
+            {
+                var errorBag = context.RequestServices.GetRequiredService<IErrorBagService>();
+                var errors = new Dictionary<string, string[]>(StringComparer.Ordinal)
+                {
+                    ["cursor"] = ["The cursor token is invalid. It may have been tampered with or may have expired."]
+                };
+                await InertiaValidationResponse.Create(context, errorBag, errors).ExecuteAsync(context);
+            }
+        });
+
         // The static facade resolves IResponseFactory/IInertia from the current
         // request scope. We only capture the accessor here, never a scoped service.
         var contextAccessor = app.ApplicationServices.GetRequiredService<IHttpContextAccessor>();
@@ -305,6 +326,11 @@ public static class Configure
 
     private static async Task OnVersionChange(HttpContext context, string serverVersion)
     {
+        var loggerFactory = context.RequestServices.GetService<ILoggerFactory>();
+        var logger = loggerFactory?.CreateLogger("InertiaCore.Middleware.InertiaMiddleware")
+            ?? NullLogger.Instance;
+        logger.VersionMismatch(context.Request.Headers[InertiaHeader.Version].ToString(), serverVersion);
+
         // Reflash so flash data and validation errors survive the follow-up reload.
         context.RequestServices.GetService<IInertiaFlashProvider>()?.Reflash();
 
@@ -323,6 +349,9 @@ public static class Configure
         await context.Response.CompleteAsync();
     }
 
+    [LoggerMessage(EventId = InertiaLogEvents.VersionMismatch, Level = LogLevel.Debug, Message = "Inertia asset version mismatch: client {ClientVersion}, server {ServerVersion}; reloading.")]
+    public static partial void VersionMismatch(this ILogger logger, string? clientVersion, string serverVersion);
+
     private sealed class SsrHealthCheckMarker
     {
     }
@@ -331,30 +360,5 @@ public static class Configure
     {
     }
 
-    public static IServiceCollection AddInertiaPagination(this IServiceCollection services,
-        Action<InertiaPaginationOptions>? options = null)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Register IHttpContextAccessor for ambient request access
-        services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-
-        // Configure pagination options
-        services.AddOptions<InertiaPaginationOptions>().Configure(options);
-
-        return services;
-    }
-
-    public static IApplicationBuilder UseInertiaPagination(this IApplicationBuilder app)
-    {
-        ArgumentNullException.ThrowIfNull(app);
-
-        var accessor = app.ApplicationServices.GetRequiredService<IHttpContextAccessor>();
-        var paginationOptions = app.ApplicationServices.GetRequiredService<IOptions<InertiaPaginationOptions>>().Value;
-
-        InertiaPaginationAmbient.Configure(accessor, paginationOptions);
-
-        return app;
-    }
 }
 

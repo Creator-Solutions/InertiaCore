@@ -9,8 +9,21 @@
         <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Validation.Generated</InterceptorsNamespaces>
     </PropertyGroup>
 
+    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.32" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.21" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+    </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\InertiaCore\InertiaCore.csproj" />
+        <ProjectReference Include="..\InertiaCore.Pagination\InertiaCore.Pagination.csproj" />
         <ProjectReference Include="..\InertiaCore.FluentValidation\InertiaCore.FluentValidation.csproj" />
         <ProjectReference Include="..\InertiaCore.SourceGenerators\InertiaCore.SourceGenerators.csproj"
                           OutputItemType="Analyzer"

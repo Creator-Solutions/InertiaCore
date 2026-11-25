@@ -1,3 +1,19 @@
+### Structured logging (IN-73)
+
+Allocation-free, source-generated logging with stable event ids for adapter logs.
+
+#### Added
+
+- **`InertiaCore.Logging.InertiaLogEvents`** — documented event-id ranges per subsystem.
+- **`[LoggerMessage]` partial methods** replacing ad-hoc `ILogger` calls across SSR, Vite dev server and prop resolution.
+- Debug log for asset version mismatches; SSR failures and prop resolution failures logged at their existing levels.
+- **`docs/guide/logging.md`** with filtering example.
+
+#### Notes
+
+- No prop values, credential headers or request bodies are logged.
+- No breaking change to public API.
+
 ### Pagination helpers (IN-74)
 
 Typed pagination helpers for `IQueryable<T>` that produce Inertia’s page shape (`data`, `links`, `meta`) with clamped paging and generated links.

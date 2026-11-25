@@ -43,6 +43,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\InertiaCore\InertiaCore.csproj"/>
+        <ProjectReference Include="..\InertiaCore.Pagination\InertiaCore.Pagination.csproj" />
         <ProjectReference Include="..\InertiaCore.SourceGenerators\InertiaCore.SourceGenerators.csproj" />
         <ProjectReference Include="..\InertiaCore.TypeGen\InertiaCore.TypeGen.csproj" />
         <ProjectReference Include="..\InertiaCoreTests.TestApp\InertiaCoreTests.TestApp.csproj" />

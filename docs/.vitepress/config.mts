@@ -67,7 +67,8 @@ export default defineConfig({
           { text: 'Server-side rendering', link: '/guide/ssr' },
           { text: 'Vite integration', link: '/guide/vite' },
           { text: '.NET Aspire', link: '/guide/aspire' },
-          { text: 'Advanced', link: '/guide/advanced' }
+          { text: 'Advanced', link: '/guide/advanced' },
+          { text: 'Logging', link: '/guide/logging' }
         ]
       },
       {
