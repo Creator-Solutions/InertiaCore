@@ -53,6 +53,7 @@
     <ItemGroup>
         <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
         <InternalsVisibleTo Include="InertiaCore.Pagination" />
+        <InternalsVisibleTo Include="InertiaCore.Benchmarks" />
     </ItemGroup>
 
     <ItemGroup>

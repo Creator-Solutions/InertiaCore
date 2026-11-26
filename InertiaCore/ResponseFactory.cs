@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using InertiaCore.Models;
 using InertiaCore.Props;
 using InertiaCore.Services;
@@ -128,14 +129,36 @@ internal class ResponseFactory : IResponseFactory
         _state = state ?? throw new ArgumentNullException(nameof(state));
         _flashProvider = flashProvider;
 
-        // Start from the application's configured JsonSerializerOptions, then ensure
-        // camelCase and cycle-handling defaults that Inertia.js requires.
-        JsonSerializerOptions hostOptions = jsonOptions?.Value?.JsonSerializerOptions ?? new JsonSerializerOptions();
-        _jsonOptions = new JsonSerializerOptions(hostOptions)
+        // Merge the host's configured options with the consumer's Inertia options, then
+        // ensure the camelCase and cycle-handling defaults that Inertia.js requires.
+        // The consumer's TypeInfoResolver (e.g. a JsonSerializerContext) is chained with
+        // DefaultJsonTypeInfoResolver so anonymous objects and dictionaries still work.
+        var hostOptions = jsonOptions?.Value?.JsonSerializerOptions;
+        var userOptions = _options.Value.JsonSerializerOptions;
+
+        var effective = new JsonSerializerOptions(hostOptions ?? new JsonSerializerOptions());
+        effective.PropertyNamingPolicy = userOptions.PropertyNamingPolicy
+            ?? effective.PropertyNamingPolicy
+            ?? JsonNamingPolicy.CamelCase;
+        effective.ReferenceHandler = userOptions.ReferenceHandler
+            ?? effective.ReferenceHandler
+            ?? ReferenceHandler.IgnoreCycles;
+
+        foreach (var converter in userOptions.Converters)
         {
-            PropertyNamingPolicy = hostOptions.PropertyNamingPolicy ?? JsonNamingPolicy.CamelCase,
-            ReferenceHandler = hostOptions.ReferenceHandler ?? ReferenceHandler.IgnoreCycles
-        };
+            if (!effective.Converters.Contains(converter))
+                effective.Converters.Add(converter);
+        }
+
+        var resolvers = new List<IJsonTypeInfoResolver>();
+        if (userOptions.TypeInfoResolver is not null)
+            resolvers.Add(userOptions.TypeInfoResolver);
+        if (effective.TypeInfoResolver is not null && !ReferenceEquals(effective.TypeInfoResolver, userOptions.TypeInfoResolver))
+            resolvers.Add(effective.TypeInfoResolver);
+        resolvers.Add(new DefaultJsonTypeInfoResolver());
+        effective.TypeInfoResolver = JsonTypeInfoResolver.Combine(resolvers.ToArray());
+
+        _jsonOptions = effective;
     }
 
     public Response Render(string component, object? props = null)

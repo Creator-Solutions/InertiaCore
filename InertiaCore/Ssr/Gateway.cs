@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using InertiaCore.Logging;
 using InertiaCore.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -34,12 +35,32 @@ internal partial class Gateway : IGateway{
         _inertiaOptions = inertiaOptions?.Value ?? new InertiaOptions();
         _logger = logger;
 
-        JsonSerializerOptions hostOptions = jsonOptions?.Value?.JsonSerializerOptions ?? new JsonSerializerOptions();
-        _jsonOptions = new JsonSerializerOptions(hostOptions)
+        var hostOptions = jsonOptions?.Value?.JsonSerializerOptions;
+        var userOptions = inertiaOptions?.Value?.JsonSerializerOptions ?? new JsonSerializerOptions();
+
+        var effective = new JsonSerializerOptions(hostOptions ?? new JsonSerializerOptions());
+        effective.PropertyNamingPolicy = userOptions.PropertyNamingPolicy
+            ?? effective.PropertyNamingPolicy
+            ?? JsonNamingPolicy.CamelCase;
+        effective.ReferenceHandler = userOptions.ReferenceHandler
+            ?? effective.ReferenceHandler
+            ?? ReferenceHandler.IgnoreCycles;
+
+        foreach (var converter in userOptions.Converters)
         {
-            PropertyNamingPolicy = hostOptions.PropertyNamingPolicy ?? JsonNamingPolicy.CamelCase,
-            ReferenceHandler = hostOptions.ReferenceHandler ?? ReferenceHandler.IgnoreCycles
-        };
+            if (!effective.Converters.Contains(converter))
+                effective.Converters.Add(converter);
+        }
+
+        var resolvers = new List<IJsonTypeInfoResolver>();
+        if (userOptions.TypeInfoResolver is not null)
+            resolvers.Add(userOptions.TypeInfoResolver);
+        if (effective.TypeInfoResolver is not null && !ReferenceEquals(effective.TypeInfoResolver, userOptions.TypeInfoResolver))
+            resolvers.Add(effective.TypeInfoResolver);
+        resolvers.Add(new DefaultJsonTypeInfoResolver());
+        effective.TypeInfoResolver = JsonTypeInfoResolver.Combine(resolvers.ToArray());
+
+        _jsonOptions = effective;
     }
 
     public async Task<SsrResponse?> Dispatch(object model, string url)

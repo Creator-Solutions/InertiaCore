@@ -1,0 +1,49 @@
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 3 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:IntermediateOutputPath="/Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/obj/Release/net10.0/" /p:OutDir="/Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/bin/Release/net10.0/" /p:OutputPath="/Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/bin/Release/net10.0/" in /Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b
+// command took 0.85 sec and exited with 0
+// start dotnet  build -c Release --no-restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:IntermediateOutputPath="/Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/obj/Release/net10.0/" /p:OutDir="/Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/bin/Release/net10.0/" /p:OutputPath="/Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/bin/Release/net10.0/" --output "/Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/bin/Release/net10.0/" in /Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b
+// command took 5.46 sec and exited with 0
+// ***** Done, took 00:00:06 (6.41 sec)   *****
+// Found 3 benchmarks:
+//   RenderBenchmarks.Small: DefaultJob
+//   RenderBenchmarks.Medium: DefaultJob
+//   RenderBenchmarks.Large: DefaultJob
+
+// **************************
+// Benchmark: RenderBenchmarks.Small: DefaultJob
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet 0a668898-aa32-499a-ab70-27c490da557b.dll --anonymousPipes 121 122 --benchmarkName InertiaCore.Benchmarks.RenderBenchmarks.Small --job Default --benchmarkId 0 in /Users/owenburns/Documents/Development/Projects/InertiaCore/InertiaCore.Benchmarks/bin/Release/net10.0/0a668898-aa32-499a-ab70-27c490da557b/bin/Release/net10.0
+// Failed to set up high priority (Permission denied). In order to run benchmarks with high priority, make sure you have the right permissions.
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.14.0
+// Runtime=.NET 10.0.14 (10.0.1426.52326), Arm64 RyuJIT AdvSIMD
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AdvSIMD,AES,CRC32,DP,RDM,SHA1,SHA256 VectorSize=128
+// Job: DefaultJob
+
+OverheadJitting  1: 1 op, 130625.00 ns, 130.6250 us/op
+WorkloadJitting  1: 1 op, 14565541.00 ns, 14.5655 ms/op
+
+OverheadJitting  2: 16 op, 299584.00 ns, 18.7240 us/op
+WorkloadJitting  2: 16 op, 446250.00 ns, 27.8906 us/op
+
+WorkloadPilot    1: 16 op, 56208.00 ns, 3.5130 us/op
+WorkloadPilot    2: 32 op, 104875.00 ns, 3.2773 us/op
+WorkloadPilot    3: 64 op, 220333.00 ns, 3.4427 us/op
+WorkloadPilot    4: 128 op, 442459.00 ns, 3.4567 us/op
+WorkloadPilot    5: 256 op, 860625.00 ns, 3.3618 us/op
+WorkloadPilot    6: 512 op, 1666959.00 ns, 3.2558 us/op
+WorkloadPilot    7: 1024 op, 3196417.00 ns, 3.1215 us/op
+WorkloadPilot    8: 2048 op, 6833333.00 ns, 3.3366 us/op
+WorkloadPilot    9: 4096 op, 16120000.00 ns, 3.9355 us/op
+WorkloadPilot   10: 8192 op, 31924542.00 ns, 3.8970 us/op
+WorkloadPilot   11: 16384 op, 66223208.00 ns, 4.0419 us/op
+WorkloadPilot   12: 32768 op, 136521500.00 ns, 4.1663 us/op
+WorkloadPilot   13: 65536 op, 158296958.00 ns, 2.4154 us/op
+Workl
