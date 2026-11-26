@@ -1,4 +1,6 @@
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace InertiaCore.Models;
 
@@ -82,6 +84,25 @@ public class InertiaOptions
     /// when every prop is safe to run in parallel.
     /// </summary>
     public PropResolution PropResolution { get; set; } = PropResolution.Sequential;
+
+    private JsonSerializerOptions? _jsonSerializerOptions;
+
+    /// <summary>
+    /// Options used to serialize page props and SSR payloads. Defaults to camelCase naming
+    /// and cycle-preserving reference handling. Consumers may replace this instance with
+    /// their own, including one carrying a source-generated <see cref="JsonSerializerContext"/>
+    /// through <see cref="JsonSerializerOptions.TypeInfoResolver"/>. When left unset the
+    /// host's configured MVC <c>JsonOptions</c> are used as the base.
+    /// </summary>
+    public JsonSerializerOptions JsonSerializerOptions
+    {
+        get => _jsonSerializerOptions ??= new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            ReferenceHandler = ReferenceHandler.IgnoreCycles
+        };
+        set => _jsonSerializerOptions = value;
+    }
 
     /// <summary>
     /// Options for the managed Node SSR process. Enable

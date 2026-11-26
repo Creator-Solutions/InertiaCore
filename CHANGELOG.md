@@ -1,3 +1,15 @@
+### JSON serialization options (IN-76)
+
+Consumers can now plug in custom `JsonSerializerOptions`, including source-generated
+`JsonSerializerContext` instances, while anonymous objects and dictionaries keep working.
+
+#### Added
+
+- **`InertiaOptions.JsonSerializerOptions`** with camelCase and cycle-preserving defaults.
+- **TypeInfoResolver chaining** with `DefaultJsonTypeInfoResolver` for source-generated contexts.
+- **`InertiaCore.Benchmarks`** BenchmarkDotNet project with small/medium/large render baselines.
+- **`docs/guide/serialization.md`** usage example.
+
 ### Structured logging (IN-73)
 
 Allocation-free, source-generated logging with stable event ids for adapter logs.

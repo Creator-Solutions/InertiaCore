@@ -68,7 +68,8 @@ export default defineConfig({
           { text: 'Vite integration', link: '/guide/vite' },
           { text: '.NET Aspire', link: '/guide/aspire' },
           { text: 'Advanced', link: '/guide/advanced' },
-          { text: 'Logging', link: '/guide/logging' }
+          { text: 'Logging', link: '/guide/logging' },
+          { text: 'Serialization', link: '/guide/serialization' }
         ]
       },
       {
