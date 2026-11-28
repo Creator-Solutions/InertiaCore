@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using InertiaCore.Contracts;
 using InertiaCore.Extensions;
@@ -89,8 +90,12 @@ public static class Inertia
     public static Response Render<TProps>(TProps props) =>
         GetFactory().Render(InertiaPageRegistry.ResolveComponent(typeof(TProps)), props);
 
+    [RequiresUnreferencedCode("Head uses dynamic model binding which is not trimming-compatible.")]
+    [RequiresDynamicCode("Head uses dynamic model binding which is not AOT-compatible.")]
     public static Task<IHtmlContent> Head(dynamic model) => GetFactory().Head(model);
 
+    [RequiresUnreferencedCode("Html uses dynamic model binding which is not trimming-compatible.")]
+    [RequiresDynamicCode("Html uses dynamic model binding which is not AOT-compatible.")]
     public static Task<IHtmlContent> Html(dynamic model) => GetFactory().Html(model);
 
     public static void Version(string? version) => GetFactory().Version(version);

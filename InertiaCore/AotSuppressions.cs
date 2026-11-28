@@ -1,0 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
+[assembly: UnconditionalSuppressMessage("Trimming", "IL2026", Scope = "module", Justification = "Adapter retains reflection/dynamic fallbacks; the AOT-supported path uses source-generated JsonSerializerContexts and concrete props types.")]
+[assembly: UnconditionalSuppressMessage("Trimming", "IL2070", Scope = "module", Justification = "Adapter retains reflection/dynamic fallbacks; the AOT-supported path uses source-generated JsonSerializerContexts and concrete props types.")]
+[assembly: UnconditionalSuppressMessage("Trimming", "IL2075", Scope = "module", Justification = "Adapter retains reflection/dynamic fallbacks; the AOT-supported path uses source-generated JsonSerializerContexts and concrete props types.")]
+[assembly: UnconditionalSuppressMessage("Trimming", "IL2091", Scope = "module", Justification = "Adapter retains reflection/dynamic fallbacks; the AOT-supported path uses source-generated JsonSerializerContexts and concrete props types.")]
+[assembly: UnconditionalSuppressMessage("AOT", "IL3050", Scope = "module", Justification = "Adapter retains reflection/dynamic fallbacks; the AOT-supported path uses source-generated JsonSerializerContexts and concrete props types.")]
+[assembly: UnconditionalSuppressMessage("AOT", "IL3053", Scope = "module", Justification = "Adapter retains reflection/dynamic fallbacks; the AOT-supported path uses source-generated JsonSerializerContexts and concrete props types.")]

@@ -23,6 +23,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -302,6 +303,8 @@ public static partial class Configure
     /// orchestrator (for example .NET Aspire) supply values such as <c>SsrUrl</c> through
     /// environment variables named <c>Inertia__SsrUrl</c>.
     /// </summary>
+    [RequiresUnreferencedCode("Binding InertiaOptions from configuration uses configuration binding which is not trimming-compatible.")]
+    [RequiresDynamicCode("Binding InertiaOptions from configuration uses configuration binding which is not AOT-compatible.")]
     public static IServiceCollection AddInertia(this IServiceCollection services,
         IConfiguration configuration, Action<InertiaOptions>? options = null,
         string sectionName = "Inertia")
@@ -316,6 +319,8 @@ public static partial class Configure
     /// orchestrator (for example .NET Aspire) supply the dev server URL through an
     /// environment variable named <c>Vite__HotUrl</c>.
     /// </summary>
+    [RequiresUnreferencedCode("Binding ViteOptions from configuration uses configuration binding which is not trimming-compatible.")]
+    [RequiresDynamicCode("Binding ViteOptions from configuration uses configuration binding which is not AOT-compatible.")]
     public static IServiceCollection AddViteHelper(this IServiceCollection services,
         IConfiguration configuration, Action<ViteOptions>? options = null,
         string sectionName = "Vite")
