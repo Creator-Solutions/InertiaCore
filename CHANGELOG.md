@@ -1,3 +1,12 @@
+### Razor tag helpers (IN-78)
+
+Idiomatic tag helpers for root views.
+
+#### Added
+
+- **`<inertia />`**, **`<inertia-head />`**, **`<vite-input src="..." />`**, **`<vite-react-refresh />`** tag helpers.
+- **`docs/guide/tag-helpers.md`** usage example.
+
 ### Native AOT support (IN-77)
 
 Minimal API apps can now be published with `PublishAot=true`.

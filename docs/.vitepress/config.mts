@@ -70,7 +70,8 @@ export default defineConfig({
           { text: 'Advanced', link: '/guide/advanced' },
           { text: 'Logging', link: '/guide/logging' },
           { text: 'Serialization', link: '/guide/serialization' },
-          { text: 'Native AOT', link: '/guide/aot' }
+          { text: 'Native AOT', link: '/guide/aot' },
+          { text: 'Tag helpers', link: '/guide/tag-helpers' }
         ]
       },
       {
