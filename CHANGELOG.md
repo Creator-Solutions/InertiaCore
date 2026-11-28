@@ -1,3 +1,14 @@
+### Native AOT support (IN-77)
+
+Minimal API apps can now be published with `PublishAot=true`.
+
+#### Added
+
+- **`IsTrimmable` / `IsAotCompatible`** on the runtime package.
+- **`InertiaJsonContext`** (internal) so `Page` and protocol metadata serialize under AOT.
+- **`samples/aot`** AOT-published sample app with CI verification.
+- **`docs/guide/aot.md`** listing unsupported scenarios.
+
 ### JSON serialization options (IN-76)
 
 Consumers can now plug in custom `JsonSerializerOptions`, including source-generated

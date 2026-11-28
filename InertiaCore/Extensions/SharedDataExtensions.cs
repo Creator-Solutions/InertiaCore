@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using InertiaCore.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,7 +22,7 @@ public static class SharedDataExtensions
     /// <typeparam name="TProvider">The provider type.</typeparam>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection, for chaining.</returns>
-    public static IServiceCollection AddInertiaSharedData<TProvider>(this IServiceCollection services)
+    public static IServiceCollection AddInertiaSharedData<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TProvider>(this IServiceCollection services)
         where TProvider : class, IInertiaSharedDataProvider
     {
         if (services is null) throw new ArgumentNullException(nameof(services));

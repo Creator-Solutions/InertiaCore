@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Net.Http;
 using InertiaCore.DevServer;
@@ -33,6 +34,8 @@ public static partial class ViteDevServerExtensions
     /// <param name="app">The application builder.</param>
     /// <param name="configure">An optional delegate that overrides the bound options.</param>
     /// <returns>The application builder, for chaining.</returns>
+    [RequiresUnreferencedCode("Vite dev server options binding uses configuration binding which is not trimming-compatible.")]
+    [RequiresDynamicCode("Vite dev server options binding uses configuration binding which is not AOT-compatible.")]
     public static IApplicationBuilder UseViteDevServer(
         this IApplicationBuilder app,
         Action<ViteDevServerOptions>? configure = null)

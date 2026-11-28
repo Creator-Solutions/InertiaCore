@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using InertiaCore.Contracts;
 using InertiaCore.Models;
 using InertiaCore.Resolvers;
@@ -34,7 +35,7 @@ public static class InertiaServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddInertiaVersion<TResolver>(this IServiceCollection services)
+    public static IServiceCollection AddInertiaVersion<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TResolver>(this IServiceCollection services)
         where TResolver : class, IInertiaVersionResolver
     {
         services.TryAddScoped<IErrorBagService, ErrorBagService>();

@@ -155,6 +155,7 @@ internal class ResponseFactory : IResponseFactory
             resolvers.Add(userOptions.TypeInfoResolver);
         if (effective.TypeInfoResolver is not null && !ReferenceEquals(effective.TypeInfoResolver, userOptions.TypeInfoResolver))
             resolvers.Add(effective.TypeInfoResolver);
+        resolvers.Add(InertiaJsonContext.Default);
         resolvers.Add(new DefaultJsonTypeInfoResolver());
         effective.TypeInfoResolver = JsonTypeInfoResolver.Combine(resolvers.ToArray());
 
